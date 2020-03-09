@@ -596,6 +596,8 @@ func (o *BootOptions) verifyClusterConnection() error {
 		_, err = client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	}
 	if err != nil {
+		log.Logger().Warnf("failed to list namespaces to check kubernetes cluster connectivity: %s", err.Error())
+
 		return fmt.Errorf("You are not currently connected to a cluster, please connect to the cluster that you intend to %s\n"+
 			"Alternatively create a new cluster using %s", util.ColorInfo("jx boot"), util.ColorInfo("jx create cluster"))
 	}
