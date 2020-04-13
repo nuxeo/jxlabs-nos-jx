@@ -1,0 +1,25 @@
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-credential-initializer-x7s78[0m
+{"level":"warn","ts":1586780093.007425,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: \"ref: refs/heads/0.8.0-**-support-backwards-incompats\" is not a valid GitHub commit ID"}
+{"level":"info","ts":1586780093.0078516,"logger":"fallback-logger","caller":"creds-init/main.go:40","msg":"Credentials initialized."}
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-working-dir-initializer-hfgrk[0m
+{"level":"warn","ts":1586780094.2911603,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/HEAD: no such file or directory"}
+{"level":"info","ts":1586780094.2938325,"logger":"fallback-logger","caller":"bash/main.go:64","msg":"Successfully executed command \"sh -c mkdir -p /workspace/source\"; output "}
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-place-tools[0m
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-git-source-nxmatic-jxlabs-nos-jx-master-kvxxf-ph4c8[0m
+{"level":"warn","ts":1586780100.4194155,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: \"ref: refs/heads/0.8.0-**-support-backwards-incompats\" is not a valid GitHub commit ID"}
+{"level":"info","ts":1586780101.8130972,"logger":"fallback-logger","caller":"git/git.go:103","msg":"Successfully cloned https://github.com/*******/**labs-nos-**.git @ v2.0.1280 in path /workspace/source"}
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-git-merge[0m
+Unable to retrieve container logs for docker://d9f1b6a8e8f52c789f0ffc4b114a16fc211ce7896b6f3b2315a95fa93e550a6d
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-init-helm[0m
+Unable to retrieve container logs for docker://9986f212746ed79847a663b28ebc86ad30f366c2b6220088b8cc77a7268f1a2e
+
+Showing logs for build [32mnxmatic-jxlabs-nos-jx-master-kvxxf-4[0m stage [32mrelease[0m and container [32mstep-release[0m
+Unable to retrieve container logs for docker://3aee0196e11e81cbdb89de9fa1e4ca9af680465802c71ec3af07e82fbf4b8fd2
+[31m
+Pipeline failed on stage 'release' : container 'step-release'. The execution of the pipeline has stopped.[0m
