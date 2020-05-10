@@ -53,6 +53,8 @@ type App struct {
 	Alias string `json:"alias,omitempty"`
 	// Values any explicit value files to be used
 	Values []string `json:"values,omitempty"`
+	// Needs is the [TILLER_NS/][NS/]NAME representations of releases that this release depends on.
+	Needs []string `json:"needs,omitempty"`
 	// Hooks is a list of extension points paired with operations, that are executed in specific points of the lifecycle of releases defined in helmfile
 	Hooks []helmfile.Hook `json:"hooks,omitempty"`
 	// Wait, if set to true, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful
