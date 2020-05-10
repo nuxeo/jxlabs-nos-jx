@@ -77,6 +77,9 @@ list: ## List all make targets
 help:
 	@grep -h -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+version: ## display version
+	@echo $(VERSION)
+
 all: build ## Build the binary
 full: check ## Build and run the tests
 check: build test ## Build and run the tests
@@ -87,8 +90,10 @@ get-test-deps: ## Install test dependencies
 print-version: ## Print version
 	@echo $(VERSION)
 
-build: $(GO_DEPENDENCIES) ## Build jx binary for current OS
+build/$(NAME): $(GO_DEPENDENCIES) ## Build jx binary for current OS
 	CGO_ENABLED=$(CGO_ENABLED) $(GO) $(BUILD_TARGET) $(BUILDFLAGS) -o build/$(NAME) $(MAIN_SRC_FILE)
+
+build: build/$(NAME)
 
 build-all: $(GO_DEPENDENCIES) build make-reports-dir ## Build all files - runtime, all tests etc.
 	CGO_ENABLED=$(CGO_ENABLED) $(GOTEST) -run=nope -tags=integration,unit -failfast -short ./... $(BUILDFLAGS)
