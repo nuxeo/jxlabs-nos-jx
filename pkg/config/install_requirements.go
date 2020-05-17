@@ -507,10 +507,6 @@ type RequirementsValues struct {
 type RequirementsConfig struct {
 	// AutoUpdate contains auto update config
 	AutoUpdate AutoUpdateConfig `json:"autoUpdate,omitempty"`
-	// BuildPackURL  the git URL of the build pack to use
-	BuildPackURL string `json:"buildPackURL,omitempty"`
-	// BuildPackRef the git ref (branch, tag, SHA) of the build pack to use
-	BuildPackRef string `json:"buildPackRef,omitempty"`
 	// BootConfigURL contains the url to which the dev environment is associated with
 	BootConfigURL string `json:"bootConfigURL,omitempty"`
 	// Cluster contains cluster specific requirements
