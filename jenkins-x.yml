@@ -1,15 +1,14 @@
-chat:
-  kind: slack
-  url: http://kubernetes.slack.com/
-  developerChannel: '#jenkins-x-dev'
-  userChannel: '#jenkins-x-user'
 buildPack: none
 pipelineConfig:
   pipelines:
     release:
+      setVersion:
+        steps:
+        - name: next-version
+          command: /workspace/source/next-version.sh
       pipeline:
         agent:
-          image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
+          image: gcr.io/kaniko-project/executor:v0.22.0
         stages:
           - name: release
             environment:
@@ -27,8 +26,8 @@ pipelineConfig:
                 value: /builder/home/.helm
               - name: GOPATH
                 value: /workspace/go
-              - name: GOPROXY
-                value: http://jenkins-x-athens-proxy
+#             - name: GOPROXY
+#               value: http://jenkins-x-athens-proxy
               - name: PARALLEL_BUILDS
                 value: "2"
               - name: DISABLE_TEST_CACHING
@@ -84,73 +83,72 @@ pipelineConfig:
 
 
               - name: build-and-push-image
-                image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
+                image: gcr.io/kaniko-project/executor:v0.22.0
                 command: /kaniko/executor
-                args: ['--dockerfile=/workspace/source/Dockerfile','--destination=gcr.io/jenkinsxio/jx:${inputs.params.version}','--destination=gcr.io/jenkinsxio/jx:latest','--context=/workspace/source','--cache-dir=/workspace']
+                args: [ '--dockerfile=/workspace/source/Dockerfile', '--destination=gcr.io/build-jx-prod/jxlabs-nos/jx:${inputs.params.version}', '--destination=gcr.io/build-jx-prod/jxlabs-nos/jx:latest', '--context=/workspace/source', '--cache-dir=/workspace']
 
               - name: release-charts
                 image: gcr.io/jenkinsxio/builder-go
                 command: make
                 args:
                 - "release"
-                - -f
-                - /workspace/source/charts/jx/Makefile
+                - --directory=/workspace/source/charts/jx
 
-              - name: update-builders
-                image: gcr.io/jenkinsxio/builder-go
-                command: jx
-                args:
-                - step
-                - create
-                - pr
-                - docker
-                - --name
-                - JX_VERSION
-                - --version
-                - $VERSION
-                - --repo
-                - https://github.com/jenkins-x/jenkins-x-builders.git
-                - --repo
-                - https://github.com/jenkins-x/jenkins-x-builders-ml.git
+              # - name: update-builders
+              #   image: gcr.io/jenkinsxio/builder-go
+              #   command: jx
+              #   args:
+              #   - step
+              #   - create
+              #   - pr
+              #   - docker
+              #   - --name
+              #   - JX_VERSION
+              #   - --version
+              #   - $VERSION
+              #   - --repo
+              #   - https://github.com/jenkins-x/jenkins-x-builders.git
+              #   - --repo
+              #   - https://github.com/jenkins-x/jenkins-x-builders-ml.git
 
-              - name: update-lighthouse
-                image: gcr.io/jenkinsxio/builder-go
-                command: jx
-                args:
-                - step
-                - create
-                - pr
-                - go
-                - --name
-                - github.com/jenkins-x/jx/v2
-                - --version
-                - $VERSION
-                - --build
-                - "make mod"
-                - --repo
-                - https://github.com/jenkins-x/lighthouse.git
-                # Disable GOPROXY for go module updates to deal with go 1.13 semver resolution issue
-                env:
-                - name: GOPROXY
-                  value: ""
+              # - name: update-lighthouse
+              #   image: gcr.io/jenkinsxio/builder-go
+              #   command: jx
+              #   args:
+              #   - step
+              #   - create
+              #   - pr
+              #   - go
+              #   - --name
+              #   - github.com/jenkins-x/jx/v2
+              #   - --version
+              #   - $VERSION
+              #   - --build
+              #   - "make mod"
+              #   - --repo
+              #   - https://github.com/jenkins-x/lighthouse.git
+              #   # Disable GOPROXY for go module updates to deal with go 1.13 semver resolution issue
+              #   env:
+              #   - name: GOPROXY
+              #     value: ""
 
-              - name: update-jxui-backend
-                image: gcr.io/jenkinsxio/builder-go
-                command: jx
-                args:
-                - step
-                - create
-                - pr
-                - go
-                - --name
-                - github.com/jenkins-x/jx/v2
-                - --version
-                - $VERSION
-                - --build
-                - "make build"
-                - --repo
-                - https://github.com/cloudbees/jxui-backend.git
-                # Disable GOPROXY for go module updates to deal with go 1.13 semver resolution issue
-                env:
-                  - name: GOPROXY
-                    value: ""
+              # - name: update-jxui-backend
+              #   image: gcr.io/jenkinsxio/builder-go
+              #  command: jx
+              #  args:
+              #  - step
+              #  - create
+              #  - pr
+              #  - go
+              #  - --name
+              #  - github.com/jenkins-x/jx/v2
+              #  - --version
+              #  - $VERSION
+              #  - --build
+              #  - "make build"
+              #  - --repo
+              #  - https://github.com/cloudbees/jxui-backend.git
+              #  # Disable GOPROXY for go module updates to deal with go 1.13 semver resolution issue
+              #  env:
+              #    - name: GOPROXY
+              #      value: ""
