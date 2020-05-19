@@ -1,26 +1,42 @@
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-credential-initializer-bcs9g[0m
-{"level":"info","ts":1589786347.7916133,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
-{"level":"info","ts":1589786347.7921262,"logger":"fallback-logger","caller":"creds-init/main.go:40","msg":"Credentials initialized."}
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-credential-initializer-qw9hs[0m
+{"level":"info","ts":1589869936.023158,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
+{"level":"info","ts":1589869936.0245707,"logger":"fallback-logger","caller":"creds-init/main.go:40","msg":"Credentials initialized."}
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-working-dir-initializer-gjn8c[0m
-{"level":"info","ts":1589786348.9630013,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/HEAD: no such file or directory"}
-{"level":"info","ts":1589786348.9647126,"logger":"fallback-logger","caller":"bash/main.go:64","msg":"Successfully executed command \"sh -c mkdir -p /workspace/source\"; output "}
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-working-dir-initializer-f9jdb[0m
+{"level":"info","ts":1589869937.4394755,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/HEAD: no such file or directory"}
+{"level":"info","ts":1589869937.4942214,"logger":"fallback-logger","caller":"bash/main.go:64","msg":"Successfully executed command \"sh -c mkdir -p /workspace/source\"; output "}
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-place-tools[0m
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-place-tools[0m
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-source-meta-nuxeo-jxlabs-nos-jx-master-h449k-dqwkn[0m
-{"level":"info","ts":1589786353.991282,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
-{"level":"info","ts":1589786355.4593081,"logger":"fallback-logger","caller":"git/git.go:103","msg":"Successfully cloned https://github.com/nuxeo/**labs-nos-**.git @ dba1a30617e1306bcfc14b2c1109f00b42470191 in path /workspace/source"}
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-source-meta-nuxeo-jxlabs-nos-jx-master-k7rtr-9vhnk[0m
+{"level":"info","ts":1589869943.5730507,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
+{"level":"info","ts":1589869945.306848,"logger":"fallback-logger","caller":"git/git.go:103","msg":"Successfully cloned https://github.com/nuxeo/**labs-nos-**.git @ 271543d0e484aabe1f447a3f7c48f4d139614fb0 in path /workspace/source"}
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-merge[0m
-Using SHAs from PULL_REFS=master:dba1a30617e1306bcfc14b2c1109f00b42470191
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-merge[0m
+Using SHAs from PULL_REFS=master:271543d0e484aabe1f447a3f7c48f4d139614fb0
 WARNING: no SHAs to merge, falling back to initial cloned commit
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-merge-pull-refs[0m
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-merge-pull-refs[0m
 SKIP merge-pull-refs: Nothing to merge
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-h449k-18[0m stage [32mmeta-pipeline[0m and container [32mstep-create-effective-pipeline[0m
-error: failed to create effective pipeline for release: validation failed for Pipeline: expected exactly one, got neither: stages[0].steps[2].command, stages[0].steps[2].loop, stages[0].steps[2].step
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-create-effective-pipeline[0m
+Effective pipeline written to jenkins-x-release-effective.yml
+
+Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-create-tekton-crds[0m
+running command: /workspace/source/next-version.sh
+++ git fetch --tags --quiet
++++ git for-each-ref refs/tags/ --count=1 --sort=-version:refname '--format=%(refname:short)'
++++ git rev-parse --short HEAD
+++ version=v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev+271543d0e
++++ echo v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev+271543d0e
++++ sed s/+/-/g
+++ version=v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
+++ git tag v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
+++ git push -f origin v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
+To https://github.com/nuxeo/**labs-nos-**.git
+ ! [remote rejected]     v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e -> v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e (cannot lock ref 'refs/tags/v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e': reference already exists)
+error: failed to push some refs to 'https://github.com/nuxeo/**labs-nos-**.git'
+error: failed to set the version on release pipelines: failed to run '/bin/sh -c /workspace/source/next-version.sh' command in directory '/workspace/source', output: ''
 [31m
-Pipeline failed on stage 'meta-pipeline' : container 'step-create-effective-pipeline'. The execution of the pipeline has stopped.[0m
+Pipeline failed on stage 'meta-pipeline' : container 'step-create-tekton-crds'. The execution of the pipeline has stopped.[0m
