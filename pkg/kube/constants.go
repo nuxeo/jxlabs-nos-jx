@@ -148,7 +148,14 @@ const (
 	// DeploymentProwBuild the name of the Deployment for the Prow webhook engine
 	DeploymentProwBuild = "prow-build"
 
+	// DefaultEnvironmentGitRepoURL the default git repository used for environments when using helm 2
 	DefaultEnvironmentGitRepoURL = "https://github.com/jenkins-x/default-environment-charts.git"
+
+	// DefaultEnvironmentHelmfileGitRepoURL the default git repository used for remote environments with helmfile
+	DefaultEnvironmentHelmfileGitRepoURL = "https://github.com/jenkins-x/default-environment-helmfile.git"
+
+	// DefaultEnvironmentHelmfileLocalGitRepoURL the default git repository used for local environments with helmfile
+	DefaultEnvironmentHelmfileLocalGitRepoURL = "https://github.com/jenkins-x/default-environment-helmfile-local.git"
 
 	DefaultOrganisationGitRepoURL = "https://github.com/jenkins-x/default-organisation.git"
 
@@ -292,6 +299,9 @@ const (
 
 	// AnnotationReleaseName is the name of the annotation that stores the release name in the preview environment
 	AnnotationReleaseName = "jenkins.io/chart-release"
+
+	// AnnotationHost used to indicate the host if using NodePort Ingress resources on premise without a LoadBalancer
+	AnnotationHost = "jenkins.io/host"
 
 	// SecretDataUsername the username in a Secret/Credentials
 	SecretDataUsername = "username"

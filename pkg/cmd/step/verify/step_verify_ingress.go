@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/mail"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts/step"
@@ -22,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -47,7 +49,6 @@ type StepVerifyIngressOptions struct {
 	Provider         string
 	IngressNamespace string
 	IngressService   string
-	ExternalIP       string
 	LazyCreate       bool
 	LazyCreateFlag   string
 }
@@ -83,9 +84,8 @@ func NewCmdStepVerifyIngress(commonOpts *opts.CommonOptions) *cobra.Command {
 	cmd.Flags().StringVarP(&options.Dir, "dir", "d", ".", "the directory to look for the values.yaml file")
 	cmd.Flags().StringVarP(&options.Namespace, "namespace", "n", "", "the namespace to install into. Defaults to $DEPLOY_NAMESPACE if not")
 
-	cmd.Flags().StringVarP(&options.IngressNamespace, "ingress-namespace", "", opts.DefaultIngressNamesapce, "The namespace for the Ingress controller")
-	cmd.Flags().StringVarP(&options.IngressService, "ingress-service", "", opts.DefaultIngressServiceName, "The name of the Ingress controller Service")
-	cmd.Flags().StringVarP(&options.ExternalIP, "external-ip", "", "", "The external IP used to access ingress endpoints from outside the Kubernetes cluster. For bare metal on premise clusters this is often the IP of the Kubernetes master. For cloud installations this is often the external IP of the ingress LoadBalancer.")
+	cmd.Flags().StringVarP(&options.IngressNamespace, "ingress-namespace", "", "", "The namespace for the Ingress controller")
+	cmd.Flags().StringVarP(&options.IngressService, "ingress-service", "", "", "The name of the Ingress controller Service")
 	cmd.Flags().StringVarP(&options.Provider, "provider", "", "", "Cloud service providing the Kubernetes cluster.  Supported providers: "+cloud.KubernetesProviderOptions())
 	cmd.Flags().StringVarP(&options.LazyCreateFlag, "lazy-create", "", "", fmt.Sprintf("Specify true/false as to whether to lazily create missing resources. If not specified it is enabled if Terraform is not specified in the %s file", config.RequirementsConfigFileName))
 	return cmd
@@ -101,7 +101,6 @@ func (o *StepVerifyIngressOptions) Run() error {
 		}
 	}
 
-	info := util.ColorInfo
 	ns := o.Namespace
 	if ns == "" {
 		ns = os.Getenv("DEPLOY_NAMESPACE")
@@ -126,57 +125,14 @@ func (o *StepVerifyIngressOptions) Run() error {
 	}
 
 	if requirements.Ingress.Domain == "" {
-		err = o.discoverIngressDomain(requirements, requirementsFileName)
+		appsConfig, _, err := config.LoadAppConfig(o.Dir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load apps")
+		}
+
+		err = o.discoverIngressDomain(requirements, requirementsFileName, appsConfig)
 		if err != nil {
 			return errors.Wrapf(err, "failed to discover the Ingress domain")
-		}
-	}
-
-	// if we're using GKE and folks have provided a domain, i.e. we're  not using the Jenkins X default nip.io
-	if requirements.Ingress.Domain != "" && !requirements.Ingress.IsAutoDNSDomain() && requirements.Cluster.Provider == cloud.GKE {
-		// then it may be a good idea to enable external dns and TLS
-		if !requirements.Ingress.ExternalDNS {
-			log.Logger().Info("using a custom domain and GKE, you can enable external dns and TLS")
-		} else if !requirements.Ingress.TLS.Enabled {
-			log.Logger().Info("using GKE with external dns, you can also now enable TLS")
-		}
-
-		if requirements.Ingress.ExternalDNS {
-			log.Logger().Infof("validating the external-dns secret in namespace %s\n", info(ns))
-
-			kubeClient, err := o.KubeClient()
-			if err != nil {
-				return errors.Wrap(err, "creating kubernetes client")
-			}
-
-			cloudDNSSecretName := requirements.Ingress.CloudDNSSecretName
-			if cloudDNSSecretName == "" {
-				cloudDNSSecretName = gke.GcpServiceAccountSecretName(kube.DefaultExternalDNSReleaseName)
-				requirements.Ingress.CloudDNSSecretName = cloudDNSSecretName
-			}
-
-			err = kube.ValidateSecret(kubeClient, cloudDNSSecretName, externaldns.ServiceAccountSecretKey, ns)
-			if err != nil {
-				if o.LazyCreate {
-					log.Logger().Infof("attempting to lazily create the external-dns secret %s\n", info(ns))
-
-					_, err = externaldns.CreateExternalDNSGCPServiceAccount(o.GCloud(), kubeClient, kube.DefaultExternalDNSReleaseName, ns,
-						requirements.Cluster.ClusterName, requirements.Cluster.ProjectID)
-					if err != nil {
-						return errors.Wrap(err, "creating the ExternalDNS GCP Service Account")
-					}
-					// lets rerun the verify step to ensure its all sorted now
-					err = kube.ValidateSecret(kubeClient, cloudDNSSecretName, externaldns.ServiceAccountSecretKey, ns)
-				}
-			}
-			if err != nil {
-				return errors.Wrap(err, "validating external-dns secret")
-			}
-
-			err = o.GCloud().EnableAPIs(requirements.Cluster.ProjectID, "dns")
-			if err != nil {
-				return errors.Wrap(err, "unable to enable 'dns' api")
-			}
 		}
 	}
 
@@ -198,7 +154,7 @@ func (o *StepVerifyIngressOptions) Run() error {
 	return requirements.SaveConfig(requirementsFileName)
 }
 
-func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.RequirementsConfig, requirementsFileName string) error {
+func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.RequirementsConfig, requirementsFileName string, appsConfig *config.AppConfig) error {
 	client, err := o.KubeClient()
 	var domain string
 	if err != nil {
@@ -215,11 +171,28 @@ func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.Re
 			log.Logger().Warnf("No provider configured\n")
 		}
 	}
+
+	if o.IngressNamespace == "" {
+		o.IngressNamespace = requirements.Ingress.Namespace
+	}
+	if o.IngressService == "" {
+		o.IngressService = requirements.Ingress.Service
+	}
+	defaultIngressValues := o.findDefaultIngressValues(requirements, appsConfig)
+	if o.IngressService == "" {
+		o.IngressService = defaultIngressValues.Service
+	}
+	if o.IngressNamespace == "" {
+		o.IngressNamespace = defaultIngressValues.Namespace
+	}
+	isNodePort := requirements.Ingress.ServiceType == "NodePort"
+	externalIP := requirements.Ingress.ExternalIP
 	domain, err = o.GetDomain(client, "",
 		o.Provider,
 		o.IngressNamespace,
 		o.IngressService,
-		o.ExternalIP)
+		externalIP,
+		isNodePort)
 	if err != nil {
 		return errors.Wrapf(err, "getting a domain for ingress service %s/%s", o.IngressNamespace, o.IngressService)
 	}
@@ -233,7 +206,8 @@ func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.Re
 				o.Provider,
 				o.IngressNamespace,
 				o.IngressService,
-				o.ExternalIP)
+				externalIP,
+				isNodePort)
 			if err != nil {
 				return errors.Wrapf(err, "getting a domain for ingress service %s/%s", o.IngressNamespace, o.IngressService)
 			}
@@ -246,6 +220,25 @@ func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.Re
 		return fmt.Errorf("failed to discover domain for ingress service %s/%s", o.IngressNamespace, o.IngressService)
 	}
 	requirements.Ingress.Domain = domain
+
+	// if we don't have a container registry defined lets default it from the service IP
+	if requirements.Cluster.Provider == cloud.KUBERNETES && requirements.Cluster.Registry == "" {
+		if requirements.Cluster.Namespace == "" {
+			requirements.Cluster.Namespace = "jx"
+		}
+
+		svc, err := client.CoreV1().Services(requirements.Cluster.Namespace).Get("docker-registry", metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "failed to list services in namespace %s so we can default the registry host", requirements.Cluster.Namespace)
+		}
+
+		if svc != nil && svc.Spec.ClusterIP != "" {
+			requirements.Cluster.Registry = svc.Spec.ClusterIP
+		} else {
+			log.Logger().Warnf("could not find the clusterIP for the service docker-registry in the namespace %s so that we could default the container registry host", requirements.Cluster.Namespace)
+		}
+	}
+
 	err = requirements.SaveConfig(requirementsFileName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to save changes to file: %s", requirementsFileName)
@@ -290,4 +283,38 @@ func (o *StepVerifyIngressOptions) waitForIngressControllerHost(kubeClient kuber
 		return false, err
 	}
 	return true, nil
+}
+
+// DiscoverIngressValues the values used to discover ingress
+type DiscoverIngressValues struct {
+	Namespace string
+	Service   string
+}
+
+var (
+	istioIngressValues = DiscoverIngressValues{
+		Namespace: "istio-system",
+		Service:   "istio-ingressgateway",
+	}
+
+	nginxIngressValues = DiscoverIngressValues{
+		Namespace: "nginx",
+		Service:   "nginx-ingress-controller",
+	}
+)
+
+// findDefaultIngressValues detects the default location of the LoadBalancer ingress service for common apps
+func (o *StepVerifyIngressOptions) findDefaultIngressValues(requirements *config.RequirementsConfig, appsConfig *config.AppConfig) DiscoverIngressValues {
+	if requirements.Ingress.Kind == config.IngressTypeIstio {
+		return istioIngressValues
+	}
+	if requirements.Ingress.Kind == config.IngressTypeIngress {
+		return nginxIngressValues
+	}
+	for _, app := range appsConfig.Apps {
+		if strings.HasSuffix(app.Name, "/istio") {
+			return istioIngressValues
+		}
+	}
+	return nginxIngressValues
 }

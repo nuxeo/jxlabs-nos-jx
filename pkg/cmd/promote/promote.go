@@ -81,7 +81,8 @@ type PromoteOptions struct {
 	prow                    bool
 
 	// Used for testing
-	CloneDir string
+	CloneDir   string
+	envContext *envctx.EnvironmentContext
 }
 
 type ReleaseInfo struct {
@@ -250,7 +251,13 @@ func (o *PromoteOptions) EnsureApplicationNameIsDefined(sf searchForChartFn, df 
 
 // Run implements this command
 func (o *PromoteOptions) Run() error {
-	err := o.EnsureApplicationNameIsDefined(o.SearchForChart, o.DiscoverAppName)
+	var err error
+	o.envContext, err = o.EnvironmentContext(".", false)
+	if err != nil {
+		return err
+	}
+
+	err = o.EnsureApplicationNameIsDefined(o.SearchForChart, o.DiscoverAppName)
 	if err != nil {
 		return err
 	}
@@ -567,6 +574,39 @@ func (o *PromoteOptions) PromoteViaPullRequest(env *v1.Environment, releaseInfo 
 		requirements.SetAppVersion(app, version, o.HelmRepositoryURL, o.Alias)
 		return nil
 	}
+	modifyAppsFn := func(appsConfig *config.AppConfig, dir string, pullRequestDetails *gits.PullRequestDetails) error {
+		var err error
+		if version == "" {
+			version, err = o.findLatestVersion(app)
+			if err != nil {
+				return err
+			}
+		}
+		chartMuseumURL, err := o.ResolveChartMuseumURL()
+		if err != nil {
+			return errors.Wrap(err, "failed to resolve chart museum URL")
+		}
+
+		details, err := o.envContext.ChartDetails(app, chartMuseumURL)
+		if err != nil {
+			return err
+		}
+		details.DefaultPrefix(appsConfig, "dev")
+
+		for i := range appsConfig.Apps {
+			appConfig := &appsConfig.Apps[i]
+			if appConfig.Name == app || appConfig.Name == details.Name {
+				appConfig.Version = version
+				return nil
+			}
+		}
+		appsConfig.Apps = append(appsConfig.Apps, config.App{
+			Name:    details.Name,
+			Version: version,
+		})
+		return nil
+	}
+
 	gitProvider, _, err := o.CreateGitProviderForURLWithoutKind(env.Spec.Source.URL)
 	if err != nil {
 		return errors.Wrapf(err, "creating git provider for %s", env.Spec.Source.URL)
@@ -580,6 +620,7 @@ func (o *PromoteOptions) PromoteViaPullRequest(env *v1.Environment, releaseInfo 
 	options := environments.EnvironmentPullRequestOptions{
 		Gitter:        o.Git(),
 		ModifyChartFn: modifyChartFn,
+		ModifyAppsFn:  modifyAppsFn,
 		GitProvider:   gitProvider,
 	}
 	filter := &gits.PullRequestFilter{}

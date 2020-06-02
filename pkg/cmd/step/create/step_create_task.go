@@ -496,14 +496,15 @@ func (o *StepCreateTaskOptions) createEffectiveProjectConfigFromOptions(tektonCl
 		o.KanikoSecretMount = kanikoSecretMount
 	}
 
-	if o.DockerRegistry == "" && !o.InterpretMode {
+	if o.DockerRegistry == "" {
 		data, err := kube.GetConfigMapData(kubeClient, kube.ConfigMapJenkinsDockerRegistry, ns)
 		if err != nil {
-			return nil, fmt.Errorf("could not find ConfigMap %s in namespace %s: %s", kube.ConfigMapJenkinsDockerRegistry, ns, err)
-		}
-		o.DockerRegistry = data["docker.registry"]
-		if o.DockerRegistry == "" {
-			return nil, util.MissingOption("docker-registry")
+			log.Logger().Warnf("could not find ConfigMap %s in namespace %s: %s", kube.ConfigMapJenkinsDockerRegistry, ns, err.Error())
+		} else if data != nil {
+			o.DockerRegistry = data["docker.registry"]
+			if o.DockerRegistry == "" {
+				log.Logger().Warnf("ConfigMap %s in namespace %s has no entry 'docker.registry'", kube.ConfigMapJenkinsDockerRegistry, ns)
+			}
 		}
 	}
 
@@ -863,10 +864,16 @@ func (o *StepCreateTaskOptions) modifyEnvVars(container *corev1.Container, globa
 			envVars = append(envVars, e)
 		}
 	}
-	if kube.GetSliceEnvVar(envVars, "DOCKER_REGISTRY") == nil {
+	if kube.GetSliceEnvVar(envVars, "DOCKER_REGISTRY") == nil && o.DockerRegistry != "" {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "DOCKER_REGISTRY",
 			Value: o.DockerRegistry,
+		})
+	}
+	if kube.GetSliceEnvVar(envVars, "DOCKER_REGISTRY_ORG") == nil && o.DockerRegistryOrg != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "DOCKER_REGISTRY_ORG",
+			Value: o.DockerRegistryOrg,
 		})
 	}
 	if kube.GetSliceEnvVar(envVars, "BUILD_NUMBER") == nil {
@@ -1014,14 +1021,6 @@ func (o *StepCreateTaskOptions) modifyEnvVars(container *corev1.Container, globa
 		}
 	}
 
-	if isKanikoExecutorStep(container) && !o.NoKaniko {
-		if kube.GetSliceEnvVar(envVars, "GOOGLE_APPLICATION_CREDENTIALS") == nil {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: o.KanikoSecretMount,
-			})
-		}
-	}
 	if kube.GetSliceEnvVar(envVars, "PREVIEW_VERSION") == nil && kube.GetSliceEnvVar(envVars, "VERSION") != nil {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "PREVIEW_VERSION",
@@ -1034,6 +1033,13 @@ func (o *StepCreateTaskOptions) modifyEnvVars(container *corev1.Container, globa
 				Name:  k,
 				Value: v,
 			})
+		}
+	}
+
+	// resolve any env var expressions in the values such as `PATH=foo:$PATH`
+	for i := range envVars {
+		if envVars[i].Value != "" {
+			envVars[i].Value = os.ExpandEnv(envVars[i].Value)
 		}
 	}
 	container.Env = envVars
@@ -1284,6 +1290,10 @@ func getVersionFromFile(dir string) (string, error) {
 }
 
 func (o *StepCreateTaskOptions) setBuildVersion(projectConfig *config.ProjectConfig) error {
+	if o.DockerRegistryOrg == "" {
+		o.DockerRegistryOrg = o.GetDockerRegistryOrg(projectConfig, o.GitInfo)
+	}
+
 	if o.NoReleasePrepare || o.ViewSteps || o.EffectivePipeline || projectConfig.NoReleasePrepare {
 		return nil
 	}

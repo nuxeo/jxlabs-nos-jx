@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"reflect"
+	"strings"
 
 	"github.com/jenkins-x/jx/v2/pkg/config"
 	"github.com/jenkins-x/jx/v2/pkg/kube/cluster"
@@ -168,6 +169,26 @@ func (o *CommonOptions) ConfigureCommonOptions(requirements *config.Requirements
 	if requirements.Helmfile {
 		// if using helmfile lets disable eagerly creating the dev Environment and instead lets create that via helm
 		o.ModifyDevEnvironmentFn = o.HelmfileModifyDevEnvironment
+
+		if o.helm == nil {
+			o.helm = helm.NewHelmCLI("helm", helm.V3, "", false)
+		}
+
+		// lets check if we have helm 2.x on the PATh if we are in a pipeline on classic jx builder images
+		version, err := o.Helm().Version(false)
+		if err != nil {
+			log.Logger().Infof("failed to get helm version: %s", err.Error())
+		}
+		version = strings.TrimPrefix(version, "Client: ")
+		version = strings.TrimPrefix(version, "v")
+		if strings.HasPrefix(version, "2.") || strings.HasPrefix(version, "1.") {
+			log.Logger().Info("old helm binary on the PATH so replacing with helm 3")
+
+			helm3Path := util.WhichBinary("helm3")
+			if helm3Path != "" {
+				o.helm = helm.NewHelmCLI("helm3", helm.V3, "", false)
+			}
+		}
 	}
 	return nil
 }

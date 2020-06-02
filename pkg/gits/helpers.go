@@ -197,7 +197,7 @@ func GitProviderURL(text string) string {
 // It creates a branch called branchName from a base.
 // It uses the pullRequestDetails for the message and title for the commit and PR.
 // It uses and updates pullRequestInfo to identify whether to rebase an existing PR.
-func PushRepoAndCreatePullRequest(dir string, upstreamRepo *GitRepository, forkRepo *GitRepository, base string, prDetails *PullRequestDetails, filter *PullRequestFilter, commit bool, commitMessage string, push bool, dryRun bool, gitter Gitter, provider GitProvider) (*PullRequestInfo, error) {
+func PushRepoAndCreatePullRequest(dir string, upstreamRepo *GitRepository, forkRepo *GitRepository, base string, prDetails *PullRequestDetails, filter *PullRequestFilter, commit bool, commitMessage string, push bool, noPR bool, dryRun bool, gitter Gitter, provider GitProvider) (*PullRequestInfo, error) {
 	userAuth := provider.UserAuth()
 	if commit {
 		err := gitter.Add(dir, "-A")
@@ -365,10 +365,14 @@ func PushRepoAndCreatePullRequest(dir string, upstreamRepo *GitRepository, forkR
 		if err != nil {
 			return nil, errors.Wrapf(err, "pushing merged branch %s", remoteBranch)
 		}
+		log.Logger().Infof("pushed merged branch %s", util.ColorInfo(remoteBranch))
+	}
+	if noPR {
+		log.Logger().Infof("disabled creating Pull Requests in dir %s", util.ColorInfo(dir))
+		return nil, nil
 	}
 	if existingPr == nil {
 		gha.Head = headPrefix + prDetails.BranchName
-
 		pr, err = provider.CreatePullRequest(gha)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating pull request with arguments %v", gha.String())
@@ -493,7 +497,6 @@ func ForkAndPullRepo(gitURL string, dir string, baseRef string, branchName strin
 			if err != nil {
 				log.Logger().Warnf("unable to determine upstream URL: %s", err.Error())
 			}
-
 			finalUpstreamURL, err := AddUserToURL(gitURL, username)
 			if err != nil {
 				return "", "", nil, nil, errors.Wrapf(err, "unable to add username to git url %s", gitURL)
@@ -718,10 +721,14 @@ func ForkAndPullRepo(gitURL string, dir string, baseRef string, branchName strin
 }
 
 func configureJxAsGitCredentialHelper(dir string, gitter Gitter, repoOwner string) error {
-	// configure jx as git credential helper for this repo
-	jxProcessBinary, err := os.Executable()
-	if err != nil {
-		return errors.Wrapf(err, "unable to determine jx binary location")
+	jxProcessBinary := os.Getenv("JX_CREDENTIAL_BINARY")
+	if jxProcessBinary == "" {
+		// configure jx as git credential helper for this repo
+		var err error
+		jxProcessBinary, err = os.Executable()
+		if err != nil {
+			return errors.Wrapf(err, "unable to determine jx binary location")
+		}
 	}
 	config := []string{"--local", "credential.helper", fmt.Sprintf("%s step git credentials --credential-helper --repo-owner %s", jxProcessBinary, repoOwner)}
 	log.Logger().Debugf("setting git config to: %s", strings.Join(config, " "))

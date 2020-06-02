@@ -3,12 +3,14 @@ package verify
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
+	v1 "github.com/jenkins-x/jx/pkg/apis/jenkins.io/v1"
+	"github.com/jenkins-x/jx/pkg/versionstream"
 
 	"github.com/jenkins-x/jx/v2/pkg/cloud/amazon/session"
 	"github.com/jenkins-x/jx/v2/pkg/prow"
@@ -41,20 +43,35 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	defaultSecretsYaml = `secrets:     
+  adminUser:
+    username: "admin"
+    password: "" 
+  hmacToken: "" 
+  pipelineUser:
+    username: ""  
+    email: "" 
+    token: ""
+`
+)
+
 // StepVerifyPreInstallOptions contains the command line flags
 type StepVerifyPreInstallOptions struct {
 	StepVerifyOptions
-	Debug                 bool
-	Dir                   string
-	LazyCreate            bool
-	DisableVerifyHelm     bool
-	DisableVerifyPackages bool
-	LazyCreateFlag        string
-	Namespace             string
-	ProviderValuesDir     string
-	TestKanikoSecretData  string
-	TestVeleroSecretData  string
-	WorkloadIdentity      bool
+	Debug                  bool
+	Dir                    string
+	LazyCreate             bool
+	DisableVerifyHelm      bool
+	DisableVerifyPackages  bool
+	DefaultHelmfileSecrets bool
+	LazyCreateFlag         string
+	Namespace              string
+	ProviderValuesDir      string
+	TestKanikoSecretData   string
+	TestVeleroSecretData   string
+	WorkloadIdentity       bool
+	NoSecretYAMLValidate   bool
 }
 
 // NewCmdStepVerifyPreInstall creates the `jx step verify pod` command
@@ -87,6 +104,7 @@ func NewCmdStepVerifyPreInstall(commonOpts *opts.CommonOptions) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.WorkloadIdentity, "workload-identity", "", false, "Enable this if using GKE Workload Identity to avoid reconnecting to the Cluster.")
 	cmd.Flags().BoolVarP(&options.DisableVerifyPackages, "disable-verify-packages", "", false, "Disable packages verification, helpful when testing different package versions.")
 	cmd.Flags().BoolVarP(&options.DisableVerifyHelm, "disable-verify-helm", "", false, "Disable Helm verification, helpful when testing different Helm versions.")
+	cmd.Flags().BoolVarP(&options.DefaultHelmfileSecrets, "default-helmfile-secrets", "", false, "If we are in a Pull Request and using helmfile we may want to generate default secrets if they are not yet present so we can lint the helmfile.")
 
 	return cmd
 }
@@ -97,6 +115,13 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 	requirements, requirementsFileName, err := config.LoadRequirementsConfig(o.Dir, config.DefaultFailOnValidationError)
 	if err != nil {
 		return err
+	}
+
+	if requirements.Helmfile && !o.NoSecretYAMLValidate {
+		err = o.validateSecretsYAML()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = o.ConfigureCommonOptions(requirements)
@@ -120,6 +145,9 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 	}
 
 	// lets find the namespace to use
+	if o.Namespace == "" {
+		o.Namespace = requirements.Cluster.Namespace
+	}
 	ns, err := o.GetDeployNamespace(o.Namespace)
 	if err != nil {
 		return err
@@ -205,29 +233,6 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 			return err
 		}
 	}
-	if requirements.Kaniko {
-		if requirements.Cluster.Provider == cloud.GKE {
-			log.Logger().Infof("Validating Kaniko secret in namespace %s", info(ns))
-
-			err = o.validateKaniko(ns)
-			if err != nil {
-				if o.LazyCreate {
-					log.Logger().Infof("attempting to lazily create the deploy namespace %s", info(ns))
-
-					err = o.lazyCreateKanikoSecret(requirements, ns)
-					if err != nil {
-						return errors.Wrapf(err, "failed to lazily create the kaniko secret in: %s", ns)
-					}
-					// lets rerun the verify step to ensure its all sorted now
-					err = o.validateKaniko(ns)
-				}
-			}
-			if err != nil {
-				return err
-			}
-			log.Logger().Info("\n")
-		}
-	}
 
 	if vns := requirements.Velero.Namespace; vns != "" {
 		if requirements.Cluster.Provider == cloud.GKE {
@@ -267,6 +272,19 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 			err = amazon.EnableIRSASupportInCluster(requirements)
 			if err != nil {
 				return errors.Wrap(err, "error enabling IRSA in cluster")
+			}
+			if o.ProviderValuesDir == "" {
+				// lets default to the version stream
+				ec, err := o.EnvironmentContext(o.Dir, true)
+				if err != nil {
+					return errors.Wrapf(err, "failed to create EnvironmentContext")
+				}
+				versionResolver := ec.VersionResolver
+				if versionResolver == nil {
+					return fmt.Errorf("no VersionResolver")
+				}
+				o.ProviderValuesDir = filepath.Join(versionResolver.VersionsDir, "kubeProviders")
+				log.Logger().Infof("using the directory %s for EKS templates", util.ColorInfo(o.ProviderValuesDir))
 			}
 			err = amazon.CreateIRSAManagedServiceAccounts(requirements, o.ProviderValuesDir)
 			if err != nil {
@@ -491,6 +509,19 @@ func (o *StepVerifyPreInstallOptions) VerifyInstallConfig(kubeClient kubernetes.
 	return nil
 }
 
+// getIPAddress return the preferred outbound ip of this machine
+func getIPAddress() (string, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP.String(), nil
+}
+
 // gatherRequirements gathers cluster requirements and connects to the cluster if required
 func (o *StepVerifyPreInstallOptions) gatherRequirements(requirements *config.RequirementsConfig, requirementsFileName string) (*config.RequirementsConfig, error) {
 	log.Logger().Debug("Gathering Requirements...")
@@ -594,6 +625,9 @@ func (o *StepVerifyPreInstallOptions) gatherRequirements(requirements *config.Re
 				}
 			}
 		}
+		if requirements.Cluster.Registry == "" {
+			requirements.Cluster.Registry = "gcr.io"
+		}
 		if !autoAcceptDefaults {
 			if !o.WorkloadIdentity && !o.InCluster() {
 				// connect to the specified cluster if different from the currently connected one
@@ -675,13 +709,33 @@ func (o *StepVerifyPreInstallOptions) gatherRequirements(requirements *config.Re
 	}
 
 	// attempt to resolve the version stream ref to a tag
-	_, ref, err := o.CloneJXVersionsRepo(requirements.VersionStream.URL, requirements.VersionStream.Ref)
+	versionStreamDir, ref, err := o.CloneJXVersionsRepo(requirements.VersionStream.URL, requirements.VersionStream.Ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "resolving version stream ref")
 	}
 	if ref != "" && ref != requirements.VersionStream.Ref {
 		log.Logger().Infof("Locking version stream %s to release %s. Jenkins X will use this release rather than %s to resolve all versions from now on.", util.ColorInfo(requirements.VersionStream.URL), util.ColorInfo(ref), requirements.VersionStream.Ref)
 		requirements.VersionStream.Ref = ref
+	}
+
+	if requirements.BuildPackURL == "" {
+		requirements.BuildPackURL = v1.KubernetesWorkloadBuildPackURL
+	}
+	if requirements.BuildPackRef == "" || requirements.BuildPackRef == "master" {
+		// lets resolve the version from the version stream
+		resolver := &versionstream.VersionResolver{
+			VersionsDir: versionStreamDir,
+		}
+		gitVersion, err := resolver.StableVersionNumber(versionstream.KindGit, requirements.BuildPackURL)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to resolve git version of %s in the version stream at dir %s", requirements.BuildPackURL, versionStreamDir)
+		}
+		if gitVersion != "" {
+			requirements.BuildPackRef = gitVersion
+			log.Logger().Infof("setting the build pack %s to version %s", requirements.BuildPackURL, gitVersion)
+		} else {
+			log.Logger().Warnf("the version stream at %s does not have a stable git version for %s", versionStreamDir, requirements.BuildPackURL)
+		}
 	}
 
 	err = o.SaveConfig(requirements, requirementsFileName)
@@ -951,14 +1005,60 @@ func (o *StepVerifyPreInstallOptions) verifyConfigMapExists(kubeClient kubernete
 func (o *StepVerifyPreInstallOptions) verifyIngress(requirements *config.RequirementsConfig, requirementsFileName string) error {
 	log.Logger().Info("Verifying Ingress...")
 	domain := requirements.Ingress.Domain
-	if requirements.Ingress.IsAutoDNSDomain() && !requirements.Ingress.IgnoreLoadBalancer {
-		log.Logger().Infof("Clearing the domain %s as when using auto-DNS domains we need to regenerate to ensure its always accurate in case the cluster or ingress service is recreated", util.ColorInfo(domain))
-		requirements.Ingress.Domain = ""
+
+	modified := false
+	// if we are discovering the domain name from the ingress service this can change if a cluster/service is recreated
+	// so we need to recreate it each time to be sure the IP address is still correct
+	if !requirements.Ingress.IgnoreLoadBalancer {
+		if requirements.Ingress.IsAutoDNSDomain() && requirements.Ingress.ServiceType != "NodePort" {
+			log.Logger().Infof("Clearing the domain %s as when using auto-DNS domains we need to regenerate to ensure its always accurate in case the cluster or ingress service is recreated", util.ColorInfo(domain))
+			requirements.Ingress.Domain = ""
+			modified = true
+		} else if requirements.Ingress.ServiceType == "NodePort" {
+			log.Logger().Infof("Clearing the domain %s as we need to ensure we discover the domain from the ingress NodePort and optional node externalIP in case the cluster, node or ingress service is recreated", util.ColorInfo(domain))
+			requirements.Ingress.Domain = ""
+			modified = true
+		}
+	}
+
+	switch requirements.Cluster.Provider {
+	case cloud.KIND:
+		if requirements.Ingress.ServiceType == "" {
+			requirements.Ingress.ServiceType = "NodePort"
+		}
+		requirements.Ingress.IgnoreLoadBalancer = true
+		modified = true
+
+		ip, err := getIPAddress()
+		if err != nil {
+			return err
+		}
+
+		if requirements.Cluster.Registry == "" {
+			if ip != "" {
+				requirements.Cluster.Registry = fmt.Sprintf("%s:5000", ip)
+				log.Logger().Infof("defaulting to container registry: %s", util.ColorInfo(requirements.Cluster.Registry))
+			} else {
+				log.Logger().Info("cannot detect the external IP address of this machine. Please update the requirements cluster.Registry value to the host/IP address and port of your container registry")
+			}
+		}
+		if requirements.Ingress.Domain == "" {
+			if ip != "" {
+				requirements.Ingress.Domain = fmt.Sprintf("%s.nip.io", ip)
+				log.Logger().Infof("defaulting to ingress domain: %s", util.ColorInfo(requirements.Ingress.Domain))
+			} else {
+				log.Logger().Info("cannot detect the external IP address of this machine. Please update the requirements ingress.domain value to access your ingress controller")
+			}
+		}
+	}
+
+	if modified {
 		err := o.SaveConfig(requirements, requirementsFileName)
 		if err != nil {
 			return errors.Wrapf(err, "failed to save changes to file: %s", requirementsFileName)
 		}
 	}
+
 	log.Logger().Info("\n")
 	return nil
 }
@@ -980,15 +1080,21 @@ func (o *StepVerifyPreInstallOptions) ValidateRequirements(requirements *config.
 		}
 	}
 
-	// lets verify that we have a repository name defined for every environment
 	modified := false
+
+	// lets verify that we have a repository name defined for every environment
 	for i, env := range requirements.Environments {
 		if env.Repository == "" {
 			clusterName := requirements.Cluster.ClusterName
-			if clusterName != "" {
-				clusterName = clusterName + "-"
+			repoName := "environment-" + clusterName
+
+			// we only need to add the env key to the git repository if there is more than one environment
+			if len(requirements.Environments) > 1 {
+				if clusterName != "" {
+					clusterName = clusterName + "-"
+				}
+				repoName = "environment-" + clusterName + env.Key
 			}
-			repoName := "environment-" + clusterName + env.Key
 			requirements.Environments[i].Repository = naming.ToValidName(repoName)
 			modified = true
 		}
@@ -1015,17 +1121,9 @@ func (o *StepVerifyPreInstallOptions) SaveConfig(c *config.RequirementsConfig, f
 	}
 
 	if c.Helmfile {
-		y := config.RequirementsValues{
-			RequirementsConfig: c,
-		}
-		data, err = yaml.Marshal(y)
+		err = config.SaveRequirementsValuesFile(c, filepath.Dir(fileName))
 		if err != nil {
 			return err
-		}
-
-		err = ioutil.WriteFile(path.Join(path.Dir(fileName), config.RequirementsValuesFileName), data, util.DefaultWritePermissions)
-		if err != nil {
-			return errors.Wrapf(err, "failed to save file %s", config.RequirementsValuesFileName)
 		}
 	}
 	return nil
@@ -1058,4 +1156,44 @@ func (o *StepVerifyPreInstallOptions) showPermissionsModeMessage(requirementsCon
 		log.Logger().Info(`The provided requirements file has 'strictPermissions' enabled but 'provider' is not Openshift.
 This feature is only supported on Openshift`)
 	}
+}
+
+func (o *StepVerifyPreInstallOptions) validateSecretsYAML() error {
+	// lets make sure we have the secrets defined as an env var
+	secretsYaml := os.Getenv("JX_SECRETS_YAML")
+	if secretsYaml == "" {
+		if o.DefaultHelmfileSecrets {
+			dir, err := ioutil.TempDir("", "jx-secrets-")
+			if err != nil {
+				return errors.Wrap(err, "failed to create temp dir for default secrets YAML")
+			}
+			secretsYaml := filepath.Join(dir, "secrets.yaml")
+			os.Setenv("JX_SECRETS_YAML", secretsYaml)
+		} else {
+			return fmt.Errorf("no $JX_SECRETS_YAML environment variable defined.\nPlease point this at your 'secrets.yaml' file.\nSee https://github.com/jenkins-x/enhancements/blob/master/proposals/2/docs/getting-started.md#setting-up-your-secrets")
+		}
+	}
+
+	// lets write a default file if it doesn't exist so that we can run things like `helmfile lint` in PR pipelines
+	// and it provides users with a file they can edit to fill in easily
+	exists, err := util.FileExists(secretsYaml)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		dir := filepath.Dir(secretsYaml)
+		err = os.MkdirAll(dir, util.DefaultWritePermissions)
+		if err != nil {
+			return errors.Wrapf(err, "failed to ensure secrets dir exists: %s", dir)
+		}
+
+		err = ioutil.WriteFile(secretsYaml, []byte(defaultSecretsYaml), util.DefaultFileWritePermissions)
+		if err != nil {
+			return errors.Wrapf(err, "failed to save default secrets YAML file to : %s", dir)
+		}
+		log.Logger().Infof("generated a default empty Secrets YAML file at: %s", util.ColorInfo(secretsYaml))
+	}
+
+	// TODO lets validate the contents and populate the secrets file?
+	return nil
 }

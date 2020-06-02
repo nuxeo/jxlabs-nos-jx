@@ -48,8 +48,10 @@ type PullRequestOperation struct {
 	Base          string
 	Component     string
 	BranchName    string
+	PRBranchName  string
 	Version       string
 	DryRun        bool
+	NoPR          bool
 	SkipCommit    bool
 	AuthorName    string
 	AuthorEmail   string
@@ -87,7 +89,6 @@ func (o *PullRequestOperation) CreatePullRequest(kind string, update ChangeFiles
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-
 		labels := []string{}
 		if !o.SkipAutoMerge {
 			labels = append(labels, "updatebot")
@@ -95,12 +96,15 @@ func (o *PullRequestOperation) CreatePullRequest(kind string, update ChangeFiles
 		if len(o.Labels) > 0 {
 			labels = append(labels, o.Labels...)
 		}
-		filter := &gits.PullRequestFilter{
-			Labels: labels,
+		var filter *gits.PullRequestFilter
+		if len(labels) > 0 {
+			filter = &gits.PullRequestFilter{
+				Labels: labels,
+			}
 		}
-
+		log.Logger().Infof("using PR filter of labels: %s", strings.Join(labels, " "))
 		details.Labels = labels
-		result, err = gits.PushRepoAndCreatePullRequest(dir, upstreamInfo, forkInfo, o.Base, details, filter, !o.SkipCommit, commitMessage, true, o.DryRun, o.Git(), provider)
+		result, err = gits.PushRepoAndCreatePullRequest(dir, upstreamInfo, forkInfo, o.Base, details, filter, !o.SkipCommit, commitMessage, true, o.NoPR, o.DryRun, o.Git(), provider)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create PR for base %s and head branch %s from temp dir %s", o.Base, details.BranchName, dir)
 		}
@@ -408,8 +412,12 @@ func (o PullRequestOperation) CreateDependencyUpdatePRDetails(kind string, srcRe
 	if o.AuthorEmail != "" && o.AuthorName != "" {
 		commitMessage.WriteString(fmt.Sprintf("\n\nSigned-off-by: %s <%s>", o.AuthorName, o.AuthorEmail))
 	}
+	prBranchName := o.PRBranchName
+	if prBranchName == "" {
+		prBranchName = fmt.Sprintf("bump-%s-version-%s", kind, string(uuid.NewUUID()))
+	}
 	return commitMessage.String(), &gits.PullRequestDetails{
-		BranchName: fmt.Sprintf("bump-%s-version-%s", kind, string(uuid.NewUUID())),
+		BranchName: prBranchName,
 		Title:      title.String(),
 		Message:    message.String(),
 	}, update, assets, nil

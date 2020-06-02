@@ -13,8 +13,6 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/kube/naming"
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/jenkins-x/jx/v2/pkg/kube"
 
 	"github.com/pborman/uuid"
@@ -32,6 +30,8 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/log"
 	"github.com/jenkins-x/jx/v2/pkg/util"
 	"github.com/pkg/errors"
+
+	"k8s.io/client-go/kubernetes"
 )
 
 // InstallOptions are shared options for installing, removing or upgrading apps for either GitOps or HelmOps
@@ -54,6 +54,7 @@ type InstallOptions struct {
 	VaultClient         vault.Client
 	AutoMerge           bool
 	SecretsScheme       string
+	VersionResolver     *versionstream.VersionResolver
 
 	valuesFiles *environments.ValuesFiles // internal variable used to track, most be passed in
 }
@@ -62,9 +63,11 @@ type InstallOptions struct {
 // or latest if not specified) from the repository with username and password. A releaseName can be specified.
 // Values can be passed with in files or as a slice of name=value pairs. An alias can be specified.
 // GitOps or HelmOps will be automatically chosen based on the o.GitOps flag
-func (o *InstallOptions) AddApp(app string, version string, repository string, username string, password string,
+func (o *InstallOptions) AddApp(details *envctx.ChartDetails, version string, username string, password string,
 	releaseName string, valuesFiles []string, setValues []string, alias string, helmUpdate bool) error {
 
+	repository := details.Repository
+	app := details.LocalName
 	o.valuesFiles = &environments.ValuesFiles{
 		Items: valuesFiles,
 	}
@@ -79,18 +82,20 @@ func (o *InstallOptions) AddApp(app string, version string, repository string, u
 		return errors.Wrapf(err, "adding helm repo")
 	}
 
-	chartName, err := o.resolvePrefixesAgainstRepos(repository, app)
-	if err != nil {
-		return errors.WithStack(err)
+	if details.Name == details.LocalName {
+		details.Name, err = o.resolvePrefixesAgainstRepos(repository, details.LocalName)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
-
+	chartName := details.Name
 	if chartName == "" {
 		return errors.Errorf("unable to find %s in %s", app, repository)
 	}
 
 	// The chart inspector allows us to operate on the unpacked chart.
 	// We need to ask questions then as we have access to the schema, and can add secrets.
-	interrogateChartFn := o.createInterrogateChartFn(version, chartName, repository, username, password, alias, true)
+	interrogateChartFn := o.createInterrogateChartFn(version, details.LocalName, repository, username, password, alias, true)
 
 	// Called whilst the chart is unpacked and modifiable
 	installAppFunc := func(dir string) error {
@@ -104,7 +109,7 @@ func (o *InstallOptions) AddApp(app string, version string, repository string, u
 			opts := GitOpsOptions{
 				InstallOptions: o,
 			}
-			err = opts.AddApp(chartDetails.Name, dir, chartDetails.Version, repository, alias, o.AutoMerge)
+			err = opts.AddApp(details.LocalName, details.Name, dir, chartDetails.Version, repository, alias, o.AutoMerge)
 			if err != nil {
 				return errors.Wrapf(err, "adding app %s version %s with alias %s using gitops", chartName, version, alias)
 			}
@@ -122,7 +127,7 @@ func (o *InstallOptions) AddApp(app string, version string, repository string, u
 					return errors.Wrapf(err, "building dependencies for %s", chartName)
 				}
 			}
-			err = opts.AddApp(chartName, dir, chartDetails.Name, chartDetails.Version, chartDetails.Values, repository,
+			err = opts.AddApp(details.Name, dir, chartDetails.Name, chartDetails.Version, chartDetails.Values, repository,
 				username, password,
 				releaseName,
 				setValues,
@@ -140,7 +145,7 @@ func (o *InstallOptions) AddApp(app string, version string, repository string, u
 	}
 
 	// Do the actual work
-	return helm.InspectChart(chartName, version, repository, username, password, o.Helmer, installAppFunc)
+	return helm.InspectChart(details.LocalName, version, repository, username, password, o.Helmer, installAppFunc)
 }
 
 //GetApps gets a list of installed apps

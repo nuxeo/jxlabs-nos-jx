@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -118,18 +119,25 @@ func FindPluginUrl(plugin jenkinsv1.PluginSpec) (string, error) {
 // EnsurePluginInstalled ensures that the correct version of a plugin is installed locally.
 // It will clean up old versions.
 func EnsurePluginInstalled(plugin jenkinsv1.Plugin) (string, error) {
+	return EnsurePluginInstalledForAliasFile(plugin, "")
+}
+
+// EnsurePluginInstalledForAliasFile ensures that the correct version of a plugin is installed locally.
+// It will clean up old versions.
+func EnsurePluginInstalledForAliasFile(plugin jenkinsv1.Plugin, aliasFileName string) (string, error) {
 	pluginBinDir, err := util.PluginBinDir(plugin.ObjectMeta.Namespace)
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(pluginBinDir, fmt.Sprintf("%s-%s", plugin.Spec.Name, plugin.Spec.Version))
+	version := plugin.Spec.Version
+	path := filepath.Join(pluginBinDir, fmt.Sprintf("%s-%s", plugin.Spec.Name, version))
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		u, err := FindPluginUrl(plugin.Spec)
 		if err != nil {
 			return "", err
 		}
-		log.Logger().Infof("Installing plugin %s version %s for command %s from %s", util.ColorInfo(plugin.Spec.Name),
-			util.ColorInfo(plugin.Spec.Version), util.ColorInfo(fmt.Sprintf("jx %s", plugin.Spec.SubCommand)), util.ColorInfo(u))
+		log.Logger().Infof("Installing plugin %s version %s for command %s from %s into %s", util.ColorInfo(plugin.Spec.Name),
+			util.ColorInfo(version), util.ColorInfo(fmt.Sprintf("jx %s", plugin.Spec.SubCommand)), util.ColorInfo(u), pluginBinDir)
 
 		// Look for other versions to cleanup
 		files, err := ioutil.ReadDir(pluginBinDir)
@@ -137,8 +145,13 @@ func EnsurePluginInstalled(plugin jenkinsv1.Plugin) (string, error) {
 			return path, err
 		}
 		deleted := make([]string, 0)
+		// lets only delete plugins for this major version so we can keep, say, helm 2 and 3 around
+		prefix := plugin.Name + "-"
+		if len(version) > 0 {
+			prefix += version[0:1]
+		}
 		for _, f := range files {
-			if strings.HasPrefix(f.Name(), plugin.Name) {
+			if strings.HasPrefix(f.Name(), prefix) {
 				err = os.Remove(filepath.Join(pluginBinDir, f.Name()))
 				if err != nil {
 					log.Logger().Warnf("Unable to delete old version of plugin %s installed at %s because %v", plugin.Name, f.Name(), err)
@@ -176,7 +189,21 @@ func EnsurePluginInstalled(plugin jenkinsv1.Plugin) (string, error) {
 			return path, err
 		}
 		defer out.Close()
-		resp, err := httpClient.Get(u)
+		requestU := u
+		if pluginURL.User != nil {
+			copy := *pluginURL
+			copy.User = nil
+			requestU = copy.String()
+		}
+		req, err := http.NewRequest("GET", requestU, nil)
+		req.Header.Add("Accept", "application/octet-stream")
+		if pluginURL.User != nil {
+			pwd, ok := pluginURL.User.Password()
+			if ok {
+				req.Header.Add("Authorization", fmt.Sprintf("token %s", pwd))
+			}
+		}
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			return path, err
 		}
@@ -192,14 +219,14 @@ func EnsurePluginInstalled(plugin jenkinsv1.Plugin) (string, error) {
 		}
 
 		oldPath := downloadFile
-		if strings.HasSuffix(filename, ".tar.gz") {
+		if strings.HasSuffix(filename, ".tar.gz") || strings.HasSuffix(aliasFileName, ".tar.gz") {
 			err = util.UnTargz(downloadFile, tmpDir, make([]string, 0))
 			if err != nil {
 				return "", err
 			}
 			oldPath = filepath.Join(tmpDir, plugin.Spec.Name)
 		}
-		if strings.HasSuffix(filename, ".zip") {
+		if strings.HasSuffix(filename, ".zip") || strings.HasSuffix(aliasFileName, ".zip") {
 			err = util.Unzip(downloadFile, tmpDir)
 			if err != nil {
 				return "", err

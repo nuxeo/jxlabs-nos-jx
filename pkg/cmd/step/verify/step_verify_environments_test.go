@@ -269,41 +269,6 @@ func Test_getEnvironmentURLTemplate(t *testing.T) {
 	}
 }
 
-func Test_getEnvironmentExposer(t *testing.T) {
-	commonOpts := opts.NewCommonOptionsWithFactory(fake.NewFakeFactory())
-	options := &commonOpts
-	testhelpers.ConfigureTestOptions(options, options.Git(), options.Helm())
-
-	testOptions := &StepVerifyEnvironmentsOptions{
-		StepVerifyOptions: StepVerifyOptions{
-			StepOptions: step.StepOptions{
-				CommonOptions: options,
-			},
-		},
-	}
-
-	requirementsYamlFile := path.Join("test_data", "verify_ingress", "exposer", "jx-requirements.yml")
-	exists, err := util.FileExists(requirementsYamlFile)
-	assert.NoError(t, err)
-	assert.True(t, exists)
-
-	bytes, err := ioutil.ReadFile(requirementsYamlFile)
-	assert.NoError(t, err)
-	requirements := &config.RequirementsConfig{}
-	err = yaml.Unmarshal(bytes, requirements)
-	assert.NoError(t, err)
-
-	environment := &v1.Environment{
-		ObjectMeta: v12.ObjectMeta{
-			Name: "dev",
-		},
-	}
-
-	valuesConfig, err := testOptions.createEnvironmentHelmValues(requirements, environment)
-	assert.NoError(t, err)
-	assert.Equal(t, "Route", valuesConfig.ExposeController.Config.Exposer, "the configured helm values should contain Route")
-}
-
 func pipelineEnvValueForKey(envVars []corev1.EnvVar, key string) string {
 	for _, entry := range envVars {
 		if entry.Name == key {
@@ -311,4 +276,79 @@ func pipelineEnvValueForKey(envVars []corev1.EnvVar, key string) string {
 		}
 	}
 	return ""
+}
+
+func TestModifyEnvironmentRequirements(t *testing.T) {
+	devReq := config.NewRequirementsConfig()
+	devReq.VersionStream.Ref = "master"
+	devReq.VersionStream.URL = "https://github.com/jenkins-x/jenkins-x-versions.git"
+	devReq.Cluster.DevEnvApprovers = []string{"jstrachan", "rawlingsj"}
+	devReq.Cluster.Provider = "kind"
+	devReq.Ingress.IgnoreLoadBalancer = true
+	devReq.Ingress.Kind = config.IngressTypeIstio
+
+	stagingReq := NewRemoteRequirementsConfig()
+	stagingEnv := kube.NewPermanentEnvironment("staging")
+	stagingEnv.Spec.RemoteCluster = true
+	stagingEnv.Spec.Source.URL = "https://github.com/someuser/environment-mycluster-staging.git"
+	stagingEnv.Spec.Source.Ref = "master"
+	err := ModifyEnvironmentRequirements(os.Stdout, devReq, stagingEnv, stagingReq)
+	require.NoError(t, err, "failed to invoke ModifyEnvironmentRequirements")
+
+	expectedFile := path.Join("test_data", "verify_environments", "remote_requirements", "jx-requirements.yml")
+	assert.FileExists(t, expectedFile)
+
+	expected, err := config.LoadRequirementsConfigFile(expectedFile)
+	require.NoError(t, err, "failed to load expected requirements %s", expectedFile)
+	expected.Repository = config.RepositoryTypeUnknown
+	diff := cmp.Diff(stagingReq, expected)
+	if diff != "" {
+		t.Logf("generated staging requirements not matching:\n")
+		t.Logf("%s\n", diff)
+		assert.Fail(t, "generated staging requirements not matching")
+
+		logYaml(t, stagingReq, "actual")
+		logYaml(t, expected, "expected")
+	}
+}
+
+func TestModifyEnvironmentRequirementsForNodePort(t *testing.T) {
+	devReq := config.NewRequirementsConfig()
+	devReq.VersionStream.Ref = "master"
+	devReq.VersionStream.URL = "https://github.com/jenkins-x/jenkins-x-versions.git"
+	devReq.Cluster.DevEnvApprovers = []string{"jstrachan", "rawlingsj"}
+	devReq.Cluster.Provider = "kubernetes"
+	devReq.Ingress.ServiceType = "NodePort"
+
+	stagingReq := NewRemoteRequirementsConfig()
+	stagingEnv := kube.NewPermanentEnvironment("staging")
+	stagingEnv.Spec.RemoteCluster = true
+	stagingEnv.Spec.Source.URL = "https://github.com/someuser/environment-mycluster-staging.git"
+	stagingEnv.Spec.Source.Ref = "master"
+	err := ModifyEnvironmentRequirements(os.Stdout, devReq, stagingEnv, stagingReq)
+	require.NoError(t, err, "failed to invoke ModifyEnvironmentRequirements")
+
+	expectedFile := path.Join("test_data", "verify_environments", "remote_requirements_nodeport", "jx-requirements.yml")
+	assert.FileExists(t, expectedFile)
+
+	expected, err := config.LoadRequirementsConfigFile(expectedFile)
+	require.NoError(t, err, "failed to load expected requirements %s", expectedFile)
+	expected.Repository = config.RepositoryTypeUnknown
+	diff := cmp.Diff(stagingReq, expected)
+	if diff != "" {
+		t.Logf("generated staging requirements not matching:\n")
+		t.Logf("%s\n", diff)
+		assert.Fail(t, "generated staging requirements not matching")
+
+		logYaml(t, stagingReq, "actual")
+		logYaml(t, expected, "expected")
+	}
+}
+
+func logYaml(t *testing.T, value interface{}, message string) {
+	data, err := yaml.Marshal(value)
+	assert.NoError(t, err, "failed to marshal to yaml")
+	if data != nil {
+		t.Logf("%s:\n%s\n", message, string(data))
+	}
 }

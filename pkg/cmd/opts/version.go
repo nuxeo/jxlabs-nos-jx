@@ -13,6 +13,88 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/version"
 )
 
+// EnvironmentContext gets or creates a team context with the common values for working with requirements, team settings
+// and version resolvers.
+//
+// if preferRequirementsFile is true we look for the local `jx-requirements.yml` file first and then fall back to the
+// development environment settings; otherwise we try to use the requirements from the environment if present
+func (o *CommonOptions) EnvironmentContext(dir string, preferRequirementsFile bool) (*envctx.EnvironmentContext, error) {
+	if o.envctx != nil {
+		return o.envctx, nil
+	}
+	var err error
+	tc := &envctx.EnvironmentContext{}
+	tc.GitOps, tc.DevEnv = o.GetDevEnv()
+	if tc.DevEnv == nil {
+		tc.DevEnv = kube.CreateDefaultDevEnvironment("jx")
+	}
+	teamSettings := tc.TeamSettings()
+
+	// lets default to local file system for the requirements as we are often invoked before we've created the cluster
+	exists := false
+	if preferRequirementsFile {
+		fileName := ""
+		tc.Requirements, fileName, err = config.LoadRequirementsConfig(dir)
+		if fileName != "" {
+			exists, _ = util.FileExists(fileName)
+		}
+		if !exists {
+			err = nil
+		}
+		if err != nil {
+			return tc, err
+		}
+	}
+	if !preferRequirementsFile || !exists {
+		// lets try the environment CRD if we have no local file
+		req, err := config.GetRequirementsConfigFromTeamSettings(teamSettings)
+		if err != nil {
+			return tc, err
+		}
+		if req != nil {
+			tc.Requirements = req
+		}
+	}
+	if err != nil {
+		return tc, err
+	}
+
+	// if we can't find a requirements then lets just create the defaults for now
+	if tc.Requirements == nil {
+		tc.Requirements, _, err = config.LoadRequirementsConfig(dir)
+		if err != nil {
+			return tc, err
+		}
+	}
+	err = o.ConfigureCommonOptions(tc.Requirements)
+	if err != nil {
+		return tc, err
+	}
+	versionStreamURL := teamSettings.VersionStreamURL
+	versionStreamRef := teamSettings.VersionStreamRef
+	if versionStreamURL == "" {
+		versionStreamURL = tc.Requirements.VersionStream.URL
+	}
+	if versionStreamRef == "" {
+		versionStreamRef = tc.Requirements.VersionStream.Ref
+	}
+	tc.VersionResolver, err = o.CreateVersionResolver(versionStreamURL, versionStreamRef)
+	if err != nil {
+		return tc, err
+	}
+	o.envctx = tc
+	if o.versionResolver == nil {
+		o.versionResolver = tc.VersionResolver
+	}
+	return tc, nil
+}
+
+// SetEnvironmentContext allows the EnvironmentContext to be specified.
+// this method is mostly used for tests but can be used to share a cached EnvironmentContext between commands
+func (o *CommonOptions) SetEnvironmentContext(envctx *envctx.EnvironmentContext) {
+	o.envctx = envctx
+}
+
 // CreateVersionResolver creates a new VersionResolver service
 func (o *CommonOptions) CreateVersionResolver(repo string, gitRef string) (*versionstream.VersionResolver, error) {
 	versionsDir, _, err := o.CloneJXVersionsRepo(repo, gitRef)
@@ -28,7 +110,12 @@ func (o *CommonOptions) CreateVersionResolver(repo string, gitRef string) (*vers
 func (o *CommonOptions) GetVersionResolver() (*versionstream.VersionResolver, error) {
 	var err error
 	if o.versionResolver == nil {
-		o.versionResolver, err = o.CreateVersionResolver("", "")
+		if o.envctx != nil {
+			o.versionResolver = o.envctx.VersionResolver
+		}
+		if o.versionResolver == nil {
+			o.versionResolver, err = o.CreateVersionResolver("", "")
+		}
 	}
 	return o.versionResolver, err
 }
