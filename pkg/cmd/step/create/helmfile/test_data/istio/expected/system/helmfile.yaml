@@ -1,0 +1,72 @@
+
+bases:
+- ../environments.yaml
+helmDefaults:
+  atomic: true
+  devel: false
+  force: false
+  recreatePods: false
+  tillerless: false
+  timeout: 520
+  tls: false
+  verify: false
+  wait: true
+releases:
+- chart: zloeber/namespace
+  name: namespace-nginx
+  namespace: jx
+  values:
+  - generated/nginx/values.yaml
+- chart: zloeber/namespace
+  name: namespace-istio-system
+  namespace: jx
+  values:
+  - generated/istio-system/values.yaml
+- chart: stable/nginx-ingress
+  name: nginx-ingress
+  namespace: nginx
+  needs:
+  - jx/namespace-nginx
+  values:
+  - test_data/jenkins-x-versions/apps/stable/nginx-ingress/values.yaml.gotmpl
+  - ../jx-requirements.values.yaml.gotmpl
+- chart: jx-labs/istio
+  name: istio
+  namespace: istio-system
+  needs:
+  - jx/namespace-istio-system
+  values:
+  - ../jx-requirements.values.yaml.gotmpl
+- chart: flagger/flagger
+  hooks:
+  - args:
+    - apply
+    - -f
+    - https://raw.githubusercontent.com/weaveworks/flagger/master/artifacts/flagger/crd.yaml
+    command: kubectl
+    events:
+    - prepare
+    name: crd-apply
+    showlogs: true
+  name: flagger
+  namespace: istio-system
+  needs:
+  - jx/namespace-istio-system
+  values:
+  - ../jx-requirements.values.yaml.gotmpl
+- chart: flagger/grafana
+  name: grafana
+  namespace: istio-system
+  needs:
+  - jx/namespace-istio-system
+  values:
+  - ../jx-requirements.values.yaml.gotmpl
+repositories:
+- name: flagger
+  url: https://flagger.app
+- name: jx-labs
+  url: https://storage.googleapis.com/jenkinsxio-labs/charts
+- name: stable
+  url: https://kubernetes-charts.storage.googleapis.com
+- name: zloeber
+  url: git+https://github.com/zloeber/helm-namespace@chart

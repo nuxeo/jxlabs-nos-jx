@@ -49,7 +49,43 @@ func (o *CommonOptions) GetDevEnv() (gitOps bool, devEnv *jenkinsv1.Environment)
 func (o *CommonOptions) ResolveChartMuseumURL() (string, error) {
 	kubeClient, ns, err := o.KubeClientAndDevNamespace()
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "creating Kiube client")
 	}
-	return services.FindServiceURL(kubeClient, ns, kube.ServiceChartMuseum)
+	answer, err := services.FindServiceURL(kubeClient, ns, kube.ServiceChartMuseum)
+	if err != nil && apierrors.IsNotFound(err) {
+		err = nil
+	}
+	if err != nil || answer == "" {
+		// lets try find a `chartmusem` ingress
+		var err2 error
+		answer, err2 = services.FindIngressURL(kubeClient, ns, "chartmuseum")
+		if err2 != nil && apierrors.IsNotFound(err2) {
+			err2 = nil
+		}
+		if err2 == nil && answer != "" {
+			return answer, nil
+		}
+	}
+	if answer == "" {
+		jxClient, ns, err := o.JXClientAndDevNamespace()
+		if err != nil {
+			return "", errors.Wrap(err, "creating JX client")
+		}
+		env, err := kube.GetDevEnvironment(jxClient, ns)
+		if err != nil && apierrors.IsNotFound(err) {
+			err = nil
+		}
+		if env != nil {
+			requirements, err := config.GetRequirementsConfigFromTeamSettings(&env.Spec.TeamSettings)
+			if err != nil {
+				return answer, errors.Wrapf(err, "getting requirements from dev Environment")
+			}
+			if requirements != nil {
+				if requirements.Cluster.ChartRepository != "" {
+					return requirements.Cluster.ChartRepository, nil
+				}
+			}
+		}
+	}
+	return answer, err
 }

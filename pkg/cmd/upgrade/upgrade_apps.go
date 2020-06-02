@@ -112,10 +112,12 @@ func NewCmdUpgradeApps(commonOpts *opts.CommonOptions) *cobra.Command {
 
 // Run implements the command
 func (o *UpgradeAppsOptions) Run() error {
-	o.GitOps, o.DevEnv = o.GetDevEnv()
-	if o.Repo == "" {
-		o.Repo = o.DevEnv.Spec.TeamSettings.AppsRepository
+	ec, err := o.EnvironmentContext(".", false)
+	if err != nil {
+		return err
 	}
+	o.GitOps = ec.GitOps
+	o.DevEnv = ec.DevEnv
 
 	kubeClient, err := o.KubeClient()
 	if err != nil {
@@ -141,6 +143,7 @@ func (o *UpgradeAppsOptions) Run() error {
 		JxClient:            jxClient,
 		InstallTimeout:      opts.DefaultInstallTimeout,
 		EnvironmentCloneDir: o.CloneDir,
+		VersionResolver:     ec.VersionResolver,
 	}
 	if o.Namespace != "" {
 		installOpts.Namespace = o.Namespace
@@ -201,12 +204,10 @@ func (o *UpgradeAppsOptions) Run() error {
 	} else if len(o.Args) == 1 {
 		app = o.Args[0]
 	}
-
-	var version string
-	if o.Version != "" {
-		version = o.Version
+	details, err := ec.ChartDetails(app, o.Repo)
+	if err != nil {
+		return err
 	}
-
-	return installOpts.UpgradeApp(app, version, o.Repo, o.Username, o.Password, o.ReleaseName, o.Alias, o.HelmUpdate, o.AskAll)
+	return installOpts.UpgradeApp(details.LocalName, o.Version, details.Repository, o.Username, o.Password, o.ReleaseName, o.Alias, o.HelmUpdate, o.AskAll)
 
 }

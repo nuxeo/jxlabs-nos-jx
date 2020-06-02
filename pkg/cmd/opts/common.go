@@ -8,13 +8,35 @@ import (
 	"strings"
 	"time"
 
-	vaultoperatorclient "github.com/banzaicloud/bank-vaults/operator/pkg/client/clientset/versioned"
+	"github.com/jenkins-x/jx/pkg/config"
+	"github.com/jenkins-x/jx/pkg/envctx"
+
+	"github.com/jenkins-x/jx/pkg/kube/cluster"
+
+	gojenkins "github.com/jenkins-x/golang-jenkins"
+	"github.com/jenkins-x/jx/pkg/cloud/gke"
+	"github.com/jenkins-x/jx/pkg/prow"
+	"github.com/jenkins-x/jx/pkg/versionstream"
+	"github.com/spf13/viper"
+
+	"github.com/jenkins-x/jx/pkg/secreturl"
+	"github.com/spf13/pflag"
+
 	"github.com/heptio/sonobuoy/pkg/client"
+	"github.com/jenkins-x/jx/pkg/cmd/clients"
+	"github.com/jenkins-x/jx/pkg/io/secrets"
+	"github.com/jenkins-x/jx/pkg/vault"
+
+	"github.com/jenkins-x/jx/pkg/kube/resources"
+	"github.com/jenkins-x/jx/pkg/kube/services"
+	"github.com/pkg/errors"
+
+	vaultoperatorclient "github.com/banzaicloud/bank-vaults/operator/pkg/client/clientset/versioned"
 	certmngclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
+	istioclient "github.com/knative/pkg/client/clientset/versioned"
+	kserve "github.com/knative/serving/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"gopkg.in/AlecAivazis/survey.v1/terminal"
@@ -92,6 +114,10 @@ var (
 	QuickStartLocationCommandAliases = []string{
 		QuickStartLocationCommandName + "s", "quickstartloc", "qsloc",
 	}
+
+	// UseHelm3 a conditional compilation flag which is false for jx 2.x builds but for alpha / 3.x builds
+	// is true to default to only using helm 3
+	UseHelm3 = true
 )
 
 // ModifyDevEnvironmentFn a callback to create/update the development Environment
@@ -150,6 +176,7 @@ type CommonOptions struct {
 	secretURLClient     secreturl.Client
 	vaultOperatorClient vaultoperatorclient.Interface
 	versionResolver     *versionstream.VersionResolver
+	envctx              *envctx.EnvironmentContext
 }
 
 type ServerFlags struct {
@@ -199,12 +226,16 @@ func (o *CommonOptions) NotifyProgressf(level LogLevel, format string, args ...i
 
 // NewCommonOptionsWithTerm creates a new CommonOptions instance with given terminal input, output and error
 func NewCommonOptionsWithTerm(factory clients.Factory, in terminal.FileReader, out terminal.FileWriter, err io.Writer) *CommonOptions {
-	return &CommonOptions{
+	co := &CommonOptions{
 		factory: factory,
 		In:      in,
 		Out:     out,
 		Err:     err,
 	}
+	if UseHelm3 {
+		co.SetHelm(helm.NewHelmCLI("helm", helm.V3, "", false))
+	}
+	return co
 }
 
 // NewCommonOptionsWithFactory creates a new CommonOptions instance with the

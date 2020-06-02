@@ -83,6 +83,8 @@ const (
 	RequirementVaultDisableURLDiscovery = "JX_REQUIREMENT_VAULT_DISABLE_URL_DISCOVERY"
 	// RequirementSecretStorageType the secret storage type
 	RequirementSecretStorageType = "JX_REQUIREMENT_SECRET_STORAGE_TYPE"
+	// RequirementHelmfile if helmfile and helm 3 is being used for environments
+	RequirementHelmfile = "JX_REQUIREMENT_HELMFILE"
 	// RequirementKanikoServiceAccountName the service account name for kaniko
 	RequirementKanikoServiceAccountName = "JX_REQUIREMENT_KANIKO_SA_NAME"
 	// RequirementKaniko if kaniko is required
@@ -139,10 +141,27 @@ const (
 	// SecretStorageTypeLocal specifies that we use the local file system in
 	// `~/.jx/localSecrets` to store secrets
 	SecretStorageTypeLocal SecretStorageType = "local"
+	// SecretStorageTypeGSM uses Google Secret Manager to store secrets
+	SecretStorageTypeGSM SecretStorageType = "gsm"
 )
 
 // SecretStorageTypeValues the string values for the secret storage
-var SecretStorageTypeValues = []string{"local", "vault"}
+var SecretStorageTypeValues = []string{"gsm", "local", "vault"}
+
+// IngressType is the type of a ingress strategy
+type IngressType string
+
+const (
+	// IngressTypeNone if we have yet to define a ingress type
+	IngressTypeNone IngressType = ""
+	// IngressTypeIngress uses the kubernetes Ingress resources
+	IngressTypeIngress IngressType = "ingress"
+	// IngressTypeIstio uses istio VirtualService resources for ingress
+	IngressTypeIstio IngressType = "istio"
+)
+
+// IngressTypeValues the string values for the ingress types
+var IngressTypeValues = []string{"ingress", "istio"}
 
 // WebhookType is the type of a webhook strategy
 type WebhookType string
@@ -194,11 +213,13 @@ const (
 // Overrideable at build time - see Makefile
 var (
 	// DefaultVersionsURL default version stream url
-	DefaultVersionsURL = "https://github.com/jenkins-x/jenkins-x-versions.git"
+	DefaultVersionsURL = "https://github.com/jenkins-x/jxr-versions.git"
 	// DefaultVersionsRef default version stream ref
 	DefaultVersionsRef = "master"
 	// DefaultBootRepository default git repo for boot
 	DefaultBootRepository = "https://github.com/jenkins-x/jenkins-x-boot-config.git"
+	// DefaultBootHelmfileRepository default git repo for boot with helmfile
+	DefaultBootHelmfileRepository = "https://github.com/jenkins-x/jenkins-x-boot-helmfile-config.git"
 	// LatestVersionStringsBucket optional bucket name to search in for latest version strings
 	LatestVersionStringsBucket = ""
 	// BinaryDownloadBaseURL the base URL for downloading the binary from - will always have "VERSION/jx-OS-ARCH.EXTENSION" appended to it when used
@@ -231,8 +252,14 @@ type EnvironmentConfig struct {
 
 // IngressConfig contains dns specific requirements
 type IngressConfig struct {
-	// DNS is enabled
+	// Annotations annotations added to generated Ingress resources by default
+	Annotations map[string]string `json:"annotations,omitempty"`
+	// ApiVersion specifies the API version for the generated ingress resousrces
+	ApiVersion string `json:"apiVersion,omitempty"`
+	// Deprecated: No longer used as we use jx-apps.yaml and helm to enable external dns; kept for compatibility.
 	ExternalDNS bool `json:"externalDNS"`
+	// ExternalIP if using 'serviceType: NodePort' then this allows the external IP address used for accessing ingress on the NodePort
+	ExternalIP string `json:"externalIP,omitempty"`
 	// CloudDNSSecretName secret name which contains the service account for external-dns and cert-manager issuer to
 	// access the Cloud DNS service to resolve a DNS challenge
 	CloudDNSSecretName string `json:"cloud_dns_secret_name,omitempty"`
@@ -250,6 +277,15 @@ type IngressConfig struct {
 	TLS TLSConfig `json:"tls"`
 	// DomainIssuerURL contains a URL used to retrieve a Domain
 	DomainIssuerURL string `json:"domainIssuerURL,omitempty" envconfig:"JX_REQUIREMENT_DOMAIN_ISSUER_URL"`
+	// ServiceType the Ingress controller Service Type.
+	// If not specified we assume 'LoadBalancer'. If using on premise, kind or minikube you may need to use NodePort if you don't have a real load balancer
+	ServiceType string `json:"serviceType,omitempty"`
+	// Namespace the kubernetes namespace used to discover the LoadBalancer Service IP addresses if not using a custom domain
+	Namespace string `json:"namespace,omitempty"`
+	// Service the kubernetes Service used to discover LoadBalancer IP addresses if not using a custom domain
+	Service string `json:"service,omitempty"`
+	// Kind the kind of kubernetes ingress stragegy - e.g. using Ingress or VirtualService resources
+	Kind IngressType `json:"kind,omitempty"`
 }
 
 // BuildPackConfig contains build pack info
@@ -520,6 +556,10 @@ type RequirementsValues struct {
 type RequirementsConfig struct {
 	// AutoUpdate contains auto update config
 	AutoUpdate AutoUpdateConfig `json:"autoUpdate,omitempty"`
+	// BuildPackURL  the git URL of the build pack to use
+	BuildPackURL string `json:"buildPackURL,omitempty"`
+	// BuildPackRef the git ref (branch, tag, SHA) of the build pack to use
+	BuildPackRef string `json:"buildPackRef,omitempty"`
 	// BootConfigURL contains the url to which the dev environment is associated with
 	BootConfigURL string `json:"bootConfigURL,omitempty"`
 	// BuildPackConfig contains custom build pack settings
@@ -898,8 +938,45 @@ func (c *RequirementsConfig) OverrideRequirementsFromEnvironment(gcloudFn func()
 			}
 		}
 	}
+<<<<<<< HEAD
 
 	// StorageConfig is reused between multiple storage configuration types and needs to be handled explicitly
+||||||| parent of bebbdd301... squashed multicluster branch https://github.com/jenkins-x/jx/tree/multicluster
+	if "" != os.Getenv(RequirementKaniko) {
+		kaniko := os.Getenv(RequirementKaniko)
+		if envVarBoolean(kaniko) {
+			c.Kaniko = true
+		}
+	}
+	if "" != os.Getenv(RequirementRepository) {
+		repositoryString := os.Getenv(RequirementRepository)
+		c.Repository = RepositoryType(repositoryString)
+	}
+	if "" != os.Getenv(RequirementWebhook) {
+		webhookString := os.Getenv(RequirementWebhook)
+		c.Webhook = WebhookType(webhookString)
+	}
+=======
+	if "" != os.Getenv(RequirementHelmfile) {
+		if envVarBoolean(os.Getenv(RequirementHelmfile)) {
+			c.Helmfile = true
+		}
+	}
+	if "" != os.Getenv(RequirementKaniko) {
+		kaniko := os.Getenv(RequirementKaniko)
+		if envVarBoolean(kaniko) {
+			c.Kaniko = true
+		}
+	}
+	if "" != os.Getenv(RequirementRepository) {
+		repositoryString := os.Getenv(RequirementRepository)
+		c.Repository = RepositoryType(repositoryString)
+	}
+	if "" != os.Getenv(RequirementWebhook) {
+		webhookString := os.Getenv(RequirementWebhook)
+		c.Webhook = WebhookType(webhookString)
+	}
+>>>>>>> bebbdd301... squashed multicluster branch https://github.com/jenkins-x/jx/tree/multicluster
 	if "" != os.Getenv(RequirementStorageBackupEnabled) {
 		storageBackup := os.Getenv(RequirementStorageBackupEnabled)
 		if envVarBoolean(storageBackup) && "" != os.Getenv(RequirementStorageBackupURL) {
@@ -962,4 +1039,22 @@ func (c *RequirementsConfig) OverrideRequirementsFromEnvironment(gcloudFn func()
 
 func envVarBoolean(value string) bool {
 	return value == "true" || value == "yes"
+}
+
+// SaveRequirementsValuesFile saves the requirements yaml file for use with helmfile / helm 3
+func SaveRequirementsValuesFile(c *RequirementsConfig, dir string) error {
+	y := RequirementsValues{
+		RequirementsConfig: c,
+	}
+	data, err := yaml.Marshal(y)
+	if err != nil {
+		return err
+	}
+
+	fileName := path.Join(dir, RequirementsValuesFileName)
+	err = ioutil.WriteFile(fileName, data, util.DefaultWritePermissions)
+	if err != nil {
+		return errors.Wrapf(err, "failed to save file %s", fileName)
+	}
+	return nil
 }

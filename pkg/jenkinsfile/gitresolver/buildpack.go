@@ -30,7 +30,7 @@ func InitBuildPack(gitter gits.Gitter, packURL string, packRef string) (string, 
 		return "", fmt.Errorf("Could not create %s: %s", dir, err)
 	}
 
-	err = ensureBranchTracksOrigin(dir, packRef, gitter)
+	err = ensureBranchTracksOrigin(dir, "master", gitter)
 	if err != nil {
 		return "", errors.Wrapf(err, "there was a problem ensuring the branch %s has tracking info", packRef)
 	}
@@ -57,9 +57,15 @@ func InitBuildPack(gitter gits.Gitter, packURL string, packRef string) (string, 
 		if len(tags) == 1 {
 			tag := tags[0]
 			branchName := fmt.Sprintf("tag-%s", tag)
-			err = gitter.CreateBranchFrom(dir, branchName, tag)
+			branches, err := gitter.LocalBranches(dir)
 			if err != nil {
-				return "", errors.Wrapf(err, "creating branch %s from %s", branchName, tag)
+				return "", errors.Wrap(err, "listing brnaches")
+			}
+			if util.StringArrayIndex(branches, branchName) < 0 {
+				err = gitter.CreateBranchFrom(dir, branchName, tag)
+				if err != nil {
+					return "", errors.Wrapf(err, "creating branch %s from %s", branchName, tag)
+				}
 			}
 			err = gitter.Checkout(dir, branchName)
 			if err != nil {
@@ -72,6 +78,10 @@ func InitBuildPack(gitter gits.Gitter, packURL string, packRef string) (string, 
 			err = gitter.CheckoutRemoteBranch(dir, packRef)
 			if err != nil {
 				return "", errors.Wrapf(err, "checking out tracking branch %s", packRef)
+			}
+			err = gitter.CloneOrPull(packURL, dir)
+			if err != nil {
+				return "", err
 			}
 		}
 

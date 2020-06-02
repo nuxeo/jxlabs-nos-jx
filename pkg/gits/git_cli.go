@@ -620,11 +620,12 @@ func (g *GitCLI) CreateAuthenticatedURL(cloneURL string, userAuth *auth.UserAuth
 	if u.Scheme == "file" {
 		return cloneURL, nil
 	}
-	if userAuth.Username != "" || userAuth.ApiToken != "" {
+	if userAuth.Username != "" && userAuth.ApiToken != "" {
 		u.User = url.UserPassword(userAuth.Username, userAuth.ApiToken)
 		return u.String(), nil
 	}
-	return cloneURL, nil
+	u.User = nil
+	return u.String(), nil
 }
 
 // RepoName formats the repository names based on the organization

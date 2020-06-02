@@ -168,7 +168,7 @@ func NewJXCommand(f clients.Factory, in terminal.FileReader, out terminal.FileWr
 			},
 		},
 		{
-			Message: "Working with Applications:",
+			Message: "Working with Apps:",
 			Commands: []*cobra.Command{
 				NewCmdLogs(commonOpts),
 				NewCmdOpen(commonOpts),

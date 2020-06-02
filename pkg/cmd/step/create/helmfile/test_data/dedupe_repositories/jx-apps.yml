@@ -1,0 +1,14 @@
+defaultNamespace: jx
+apps:
+- name: stable/nginx-ingress
+- name: stable/velero
+  namespace: velero
+- name: external-dns
+  repository: https://kubernetes-charts.storage.googleapis.com
+  namespace: jx
+- name: bitnami/nexus
+  version: 9.2.1
+- name: jetstack/cert-manager
+  namespace: cert-manager
+- name: repositories
+  repository: ".."

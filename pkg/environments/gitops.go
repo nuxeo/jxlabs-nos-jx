@@ -35,6 +35,9 @@ type ValuesFiles struct {
 type ModifyChartFn func(requirements *helm.Requirements, metadata *chart.Metadata, existingValues map[string]interface{},
 	templates map[string]string, dir string, pullRequestDetails *gits.PullRequestDetails) error
 
+// ModifyAppsFn callback for modifying the `jx-apps.yml` in an environment git repository which is using helmfile and helm 3
+type ModifyAppsFn func(appsConfig *config.AppConfig, dir string, pullRequestDetails *gits.PullRequestDetails) error
+
 // EnvironmentPullRequestOptions are options for creating a pull request against an environment.
 // The provide a Gitter client for performing git operations, a GitProvider client for talking to the git provider,
 // a callback ModifyChartFn which is where the changes you want to make are defined,
@@ -42,6 +45,7 @@ type EnvironmentPullRequestOptions struct {
 	Gitter        gits.Gitter
 	GitProvider   gits.GitProvider
 	ModifyChartFn ModifyChartFn
+	ModifyAppsFn  ModifyAppsFn
 	Labels        []string
 }
 
@@ -71,9 +75,18 @@ func (o *EnvironmentPullRequestOptions) Create(env *jenkinsv1.Environment, prDir
 			prDir)
 	}
 
-	err = ModifyChartFiles(dir, pullRequestDetails, o.ModifyChartFn, chartName)
-	if err != nil {
-		return nil, err
+	hasAppsFile := false
+	if o.ModifyAppsFn != nil {
+		hasAppsFile, err = ModifyAppsFile(dir, nil, o.ModifyAppsFn)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !hasAppsFile {
+		err = ModifyChartFiles(dir, pullRequestDetails, o.ModifyChartFn, chartName)
+		if err != nil {
+			return nil, err
+		}
 	}
 	labels := make([]string, 0)
 	labels = append(labels, pullRequestDetails.Labels...)
@@ -82,7 +95,7 @@ func (o *EnvironmentPullRequestOptions) Create(env *jenkinsv1.Environment, prDir
 		labels = append(labels, gits.LabelUpdatebot)
 	}
 	pullRequestDetails.Labels = labels
-	prInfo, err := gits.PushRepoAndCreatePullRequest(dir, upstreamRepo, forkURL, base, pullRequestDetails, filter, true, pullRequestDetails.Message, true, false, o.Gitter, o.GitProvider)
+	prInfo, err := gits.PushRepoAndCreatePullRequest(dir, upstreamRepo, forkURL, base, pullRequestDetails, filter, true, pullRequestDetails.Message, true, false, false, o.Gitter, o.GitProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +160,28 @@ func ModifyChartFiles(dir string, details *gits.PullRequestDetails, modifyFn Mod
 		return err
 	}
 	return nil
+}
+
+// ModifyAppsFile modifies the 'jx-apps.yml' file to add/update/remove apps
+func ModifyAppsFile(dir string, details *gits.PullRequestDetails, modifyFn ModifyAppsFn) (bool, error) {
+	appsConfig, fileName, err := config.LoadAppConfig(dir)
+	if fileName == "" {
+		// if we don't have a `jx-apps.yml` then just return immediately
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	err = modifyFn(appsConfig, dir, details)
+	if err != nil {
+		return false, err
+	}
+
+	err = appsConfig.SaveConfig(fileName)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // CreateUpgradeRequirementsFn creates the ModifyChartFn that upgrades the requirements of a chart.
@@ -225,6 +260,48 @@ func CreateUpgradeRequirementsFn(all bool, chartName string, alias string, versi
 	}
 }
 
+// CreateUpgradeAppConfigFn creates the ModifyAppsFn that upgrades the requirements of a chart.
+// Either all requirements may be upgraded, or the chartName,
+// alias and version can be specified.
+func CreateUpgradeAppConfigFn(all bool, chartName string, version string) ModifyAppsFn {
+	upgraded := false
+	return func(appsConfig *config.AppConfig, dir string, details *gits.PullRequestDetails) error {
+
+		// Work through the upgrades
+		for _, d := range appsConfig.Apps {
+			// We need to ignore the platform unless the chart name is the platform
+			upgrade := false
+			if all {
+				upgrade = true
+			} else {
+				if d.Name == chartName {
+					upgrade = true
+				}
+			}
+			if upgrade {
+				upgraded = true
+				if d.Version != version {
+					oldVersion := d.Version
+					// Do the upgrade
+					d.Version = version
+					if !all {
+						details.Title = fmt.Sprintf("Upgrade %s to %s", chartName, version)
+						details.Message = fmt.Sprintf("Upgrade %s from %s to %s", chartName, oldVersion, version)
+					} else {
+						details.Message = fmt.Sprintf("%s\n* %s from %s to %s", details.Message, d.Name, oldVersion, version)
+					}
+				} else {
+					upgraded = false
+				}
+			}
+		}
+		if !upgraded {
+			log.Logger().Infof("No upgrades available")
+		}
+		return nil
+	}
+}
+
 // CreateAddRequirementFn create the ModifyChartFn that adds a dependency to a chart. It takes the chart name,
 // an alias for the chart, the version of the chart, the repo to load the chart from,
 // valuesFiles (an array of paths to values.yaml files to add). The chartDir is the unpacked chart being added,
@@ -262,6 +339,36 @@ func CreateAddRequirementFn(chartName string, alias string, version string, repo
 				return errors.Wrapf(err, "creating nested app dir in chart dir %s", chartDir)
 			}
 
+		}
+		return nil
+	}
+}
+
+// CreateAddAppConfigFn create the ModifyAppsFn that adds an app to the AppConfig
+func CreateAddAppConfigFn(chartName string, version string, repo string) ModifyAppsFn {
+	return func(appsConfig *config.AppConfig, dir string, pullRequestDetails *gits.PullRequestDetails) error {
+		// See if the chart already exists in config
+		found := false
+		for _, d := range appsConfig.Apps {
+			if d.Name == chartName {
+				// App found
+				log.Logger().Infof("App %s already installed.", util.ColorWarning(chartName))
+				if version != d.Version {
+					log.Logger().Infof("To upgrade the chartName use %s or %s",
+						util.ColorInfo("jx upgrade chartName <chartName>"),
+						util.ColorInfo("jx upgrade apps --all"))
+				}
+				found = true
+				break
+			}
+		}
+
+		// If app not found, add it
+		if !found {
+			appsConfig.Apps = append(appsConfig.Apps, config.App{
+				Name: chartName,
+			})
+			// TODO lets default the namespace by looking up the configuration in the version stream
 		}
 		return nil
 	}

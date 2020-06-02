@@ -2,6 +2,7 @@ package step
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
@@ -28,6 +29,7 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/templates"
 	"github.com/spf13/cobra"
+	xmldom "github.com/subchen/go-xmldom"
 )
 
 const (
@@ -376,6 +378,9 @@ func (o *StepNextVersionOptions) SetVersion() error {
 	if err != nil {
 		return err
 	}
+	processed := false
+	output := ""
+
 	switch o.Filename {
 	case packagejson:
 		regex = regexp.MustCompile(`[0-9][0-9]{0,2}.[0-9][0-9]{0,2}(.[0-9][0-9]{0,2})?(.[0-9][0-9]{0,2})?(-development)?`)
@@ -385,21 +390,31 @@ func (o *StepNextVersionOptions) SetVersion() error {
 		regex = regexp.MustCompile(`[0-9][0-9]{0,2}.[0-9][0-9]{0,2}(.[0-9][0-9]{0,2})?(.[0-9][0-9]{0,2})?(-.*)?`)
 		matchField = "version: "
 
+	case pomxml:
+		processed = true
+		output, err = ReplacePomXmlVersion(b, o.NewVersion)
+		if err != nil {
+			return errors.Wrap(err, "failed to replace pom.xml version")
+		}
+
 	default:
-		return fmt.Errorf("unrecognised filename %s, supported files are %s %s", o.Filename, packagejson, chartyaml)
+		return fmt.Errorf("unrecognised filename %s, supported files are %s %s %s", o.Filename, packagejson, pomxml, chartyaml)
 	}
 
-	lines := strings.Split(string(b), "\n")
+	if !processed {
+		lines := strings.Split(string(b), "\n")
 
-	for i, line := range lines {
-		if strings.Contains(line, matchField) {
-			lines[i] = regex.ReplaceAllString(line, o.NewVersion)
-		} else {
-			lines[i] = line
+		for i, line := range lines {
+			if strings.Contains(line, matchField) {
+				lines[i] = regex.ReplaceAllString(line, o.NewVersion)
+			} else {
+				lines[i] = line
+			}
 		}
+		output = strings.Join(lines, "\n")
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filename, []byte(output), 0600)
+	err = ioutil.WriteFile(filename, []byte(output), 0644)
 	if err != nil {
 		return err
 	}
@@ -408,7 +423,7 @@ func (o *StepNextVersionOptions) SetVersion() error {
 		// lets not commit to git as we do that in the tag step
 		return nil
 	}
-	err = o.Git().Add(o.Dir, o.Filename)
+	err = o.Git().Add(o.Dir, "*")
 	if err != nil {
 		return err
 	}
@@ -419,5 +434,40 @@ func (o *StepNextVersionOptions) SetVersion() error {
 	}
 	return nil
 }
+
+func (o *StepNextVersionOptions) setPackageVersion(b []byte) error {
+	jsPackage := PackageJSON{}
+	err := json.Unmarshal(b, &jsPackage)
+	if err != nil {
+		return err
+	}
+	jsPackage.Version = o.NewVersion
+
+	return nil
+}
+
+func (o *StepNextVersionOptions) setChartVersion(b []byte) error {
+	return nil
+}
+
+func (o *StepNextVersionOptions) setPomVersion(b []byte) error {
+	return nil
+}
+
+// ReplacePomXmlVersion replaces the top level pom.xml version
+func ReplacePomXmlVersion(data []byte, newVersion string) (string, error) {
+	doc, err := xmldom.Parse(bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+
+	child := doc.Root.GetChild("version")
+	if child == nil {
+		return "", fmt.Errorf("could not find <version> inside the pom.xml")
+	}
+	child.Text = newVersion
+	return doc.XMLPretty(), nil
+}
+
 
 // returns a string array containing the git owner and repo name for a given URL

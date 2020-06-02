@@ -2,10 +2,12 @@ package boot
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/jenkins-x/jx/pkg/cloud"
 
 	"github.com/jenkins-x/jx/v2/pkg/versionstream"
 
@@ -50,8 +52,11 @@ type BootOptions struct {
 
 	AttemptRestore bool
 
-	// UpgradeGit if we want to automatically upgrade this boot clone if there have been changes since the current clone
+	// NoUpgradeGit if we want to automatically upgrade this boot clone if there have been changes since the current clone
 	NoUpgradeGit bool
+
+	// Helmfile to enable helmfile and helm 3 support
+	Helmfile bool
 }
 
 var (
@@ -105,6 +110,7 @@ func NewCmdBoot(commonOpts *opts.CommonOptions) *cobra.Command {
 	cmd.Flags().StringVarP(&options.RequirementsFile, "requirements", "r", "", "WARNING: this should only be used for the initial boot of a cluster: requirements file which will overwrite the default requirements file")
 	cmd.Flags().BoolVarP(&options.AttemptRestore, "attempt-restore", "a", false, "attempt to boot from an existing dev environment repository")
 	cmd.Flags().BoolVarP(&options.NoUpgradeGit, "no-update-git", "", false, "disables any attempt to update the local git clone if its old")
+	cmd.Flags().BoolVarP(&options.Helmfile, "helmfile", "", false, "enables helmfile and helm 3 support. Note this is currently experimental. See: https://github.com/jenkins-x/enhancements/tree/master/proposals/2/docs")
 
 	return cmd
 }
@@ -242,17 +248,20 @@ func (o *BootOptions) Run() error {
 	so.CommonOptions.SetDevNamespace(requirements.Cluster.Namespace)
 	// lets ensure the namespace is set in the jenkins-x.yml file
 	envVars := make([]v1.EnvVar, 0)
-	for _, e := range projectConfig.PipelineConfig.Pipelines.Release.Pipeline.Environment {
-		if e.Name == "DEPLOY_NAMESPACE" {
-			envVars = append(envVars, v1.EnvVar{
-				Name:  "DEPLOY_NAMESPACE",
-				Value: requirements.Cluster.Namespace,
-			})
-		} else {
-			envVars = append(envVars, e)
+	if projectConfig.PipelineConfig != nil && projectConfig.PipelineConfig.Pipelines.Release != nil {
+		for _, e := range projectConfig.PipelineConfig.Pipelines.Release.Pipeline.Environment {
+			if e.Name == "DEPLOY_NAMESPACE" {
+				envVars = append(envVars, v1.EnvVar{
+					Name:  "DEPLOY_NAMESPACE",
+					Value: requirements.Cluster.Namespace,
+				})
+			} else {
+				envVars = append(envVars, e)
+			}
 		}
+		projectConfig.PipelineConfig.Pipelines.Release.Pipeline.Environment = envVars
+
 	}
-	projectConfig.PipelineConfig.Pipelines.Release.Pipeline.Environment = envVars
 	err = projectConfig.SaveConfig(pipelineFile)
 	if err != nil {
 		return errors.Wrapf(err, "setting namespace in jenkins-x.yml")
@@ -289,6 +298,9 @@ func (o *BootOptions) determineGitURLAndRef() (string, string) {
 	if err != nil {
 		log.Logger().Info("Creating boot config with defaults, as not in an existing boot directory with a git repository.")
 		gitURL = config.DefaultBootRepository
+		if o.Helmfile {
+			gitURL = config.DefaultBootHelmfileRepository
+		}
 		gitRef = config.DefaultVersionsRef
 	}
 
@@ -531,7 +543,7 @@ func (o *BootOptions) overrideRequirements(defaultBootConfigURL string) error {
 
 	o.defaultVersionStream(requirements)
 	if requirements.BootConfigURL == "" {
-		requirements.BootConfigURL = defaultBootConfigURL
+		requirements.BootConfigURL = RemoveUserPasswordFromURL(defaultBootConfigURL)
 	}
 
 	if err := requirements.SaveConfig(requirementsFile); err != nil {
@@ -539,6 +551,18 @@ func (o *BootOptions) overrideRequirements(defaultBootConfigURL string) error {
 	}
 
 	return nil
+}
+
+func RemoveUserPasswordFromURL(urlText string) string {
+	if urlText == "" {
+		return urlText
+	}
+	u, err := url.Parse(urlText)
+	if err != nil {
+		return urlText
+	}
+	u.User = nil
+	return u.String()
 }
 
 func (o *BootOptions) determineGitRef(resolver *versionstream.VersionResolver, requirements *config.RequirementsConfig, gitURL string) (string, error) {
@@ -576,7 +600,20 @@ func (o *BootOptions) defaultVersionStream(requirements *config.RequirementsConf
 func (o *BootOptions) verifyRequirements(requirements *config.RequirementsConfig, requirementsFile string) error {
 	provider := requirements.Cluster.Provider
 	if provider == "" {
-		return config.MissingRequirement("provider", requirementsFile)
+		if o.BatchMode {
+			return config.MissingRequirement("provider", requirementsFile)
+		}
+
+		var err error
+		requirements.Cluster.Provider, err = util.PickNameWithDefault(cloud.KubernetesProviders, "Select Kubernetes provider", cloud.GKE, "the type of Kubernetes installation", o.GetIOFileHandles())
+		if err != nil {
+			return errors.Wrap(err, "selecting Kubernetes provider")
+		}
+		err = requirements.SaveConfig(requirementsFile)
+		if err != nil {
+			return err
+		}
+		log.Logger().Infof("saved requirements file %s", requirementsFile)
 	}
 	if requirements.Cluster.Namespace == "" {
 		return config.MissingRequirement("namespace", requirementsFile)

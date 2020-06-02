@@ -1,0 +1,21 @@
+bases:
+- ../environments.yaml
+helmDefaults:
+  atomic: true
+  devel: false
+  force: false
+  recreatePods: false
+  tillerless: false
+  timeout: 520
+  tls: false
+  verify: false
+  wait: true
+releases:
+- chart: jenkins-x/lighthouse
+  name: lighthouse
+  values:
+  - ../jx-requirements.values.yaml.gotmpl
+  - lighthouse/values.yaml
+repositories:
+- name: jenkins-x
+  url: https://storage.googleapis.com/chartmuseum.jenkins-x.io

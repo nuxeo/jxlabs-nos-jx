@@ -103,7 +103,16 @@ func NewCmdGetApps(commonOpts *opts.CommonOptions) *cobra.Command {
 
 // Run implements this command
 func (o *GetAppsOptions) Run() error {
-	o.GitOps, o.DevEnv = o.GetDevEnv()
+	ec, err := o.EnvironmentContext(".", false)
+	if err != nil {
+		return err
+	}
+	o.GitOps = ec.GitOps
+	o.DevEnv = ec.DevEnv
+
+	if err != nil {
+		return err
+	}
 	kubeClient, err := o.GetOptions.KubeClient()
 	if err != nil {
 		return err
@@ -125,6 +134,7 @@ func (o *GetAppsOptions) Run() error {
 		Helmer:              o.Helm(),
 		JxClient:            jxClient,
 		EnvironmentCloneDir: envsDir,
+		VersionResolver:     ec.VersionResolver,
 	}
 
 	if o.GetSecretsLocation() == secrets.VaultLocationKind {
@@ -226,7 +236,6 @@ func (o *GetAppsOptions) generateTable(apps *v1.AppList, kubeClient kubernetes.I
 				table.AddRow(row...)
 			}
 		}
-
 	}
 	return table
 }
