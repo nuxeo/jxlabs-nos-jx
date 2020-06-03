@@ -13,6 +13,7 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/cloud/iks"
 	"github.com/jenkins-x/jx/v2/pkg/surveyutils"
 	"github.com/jenkins-x/jx/v2/pkg/util"
+	"github.com/pkg/errors"
 	"gopkg.in/AlecAivazis/survey.v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

@@ -9,10 +9,7 @@ import (
 
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts/step"
 
-	"github.com/jenkins-x/jx/v2/pkg/cloud/gke"
-	"github.com/jenkins-x/jx/v2/pkg/cloud/gke/externaldns"
 	"github.com/jenkins-x/jx/v2/pkg/config"
-	"github.com/jenkins-x/jx/v2/pkg/kube"
 	"github.com/jenkins-x/jx/v2/pkg/util"
 
 	"github.com/jenkins-x/jx-logging/pkg/log"

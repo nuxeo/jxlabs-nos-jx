@@ -8,27 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jenkins-x/jx/pkg/config"
-	"github.com/jenkins-x/jx/pkg/envctx"
-
-	"github.com/jenkins-x/jx/pkg/kube/cluster"
-
-	gojenkins "github.com/jenkins-x/golang-jenkins"
-	"github.com/jenkins-x/jx/pkg/cloud/gke"
-	"github.com/jenkins-x/jx/pkg/prow"
-	"github.com/jenkins-x/jx/pkg/versionstream"
 	"github.com/spf13/viper"
 
-	"github.com/jenkins-x/jx/pkg/secreturl"
 	"github.com/spf13/pflag"
 
 	"github.com/heptio/sonobuoy/pkg/client"
-	"github.com/jenkins-x/jx/pkg/cmd/clients"
-	"github.com/jenkins-x/jx/pkg/io/secrets"
-	"github.com/jenkins-x/jx/pkg/vault"
 
-	"github.com/jenkins-x/jx/pkg/kube/resources"
-	"github.com/jenkins-x/jx/pkg/kube/services"
 	"github.com/pkg/errors"
 
 	vaultoperatorclient "github.com/banzaicloud/bank-vaults/operator/pkg/client/clientset/versioned"
@@ -55,6 +40,7 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/cloud/gke"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/clients"
 	"github.com/jenkins-x/jx/v2/pkg/config"
+	"github.com/jenkins-x/jx/v2/pkg/envctx"
 	"github.com/jenkins-x/jx/v2/pkg/gits"
 	"github.com/jenkins-x/jx/v2/pkg/helm"
 	"github.com/jenkins-x/jx/v2/pkg/io/secrets"

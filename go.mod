@@ -15,6 +15,7 @@ require (
 	github.com/TV4/logrus-stackdriver-formatter v0.1.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20190504002508-159cbd5dba26
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/alexflint/go-filemutex v0.0.0-20171028004239-d358565f3c3f
 	github.com/andygrunwald/go-gerrit v0.0.0-20181026193842-43cfd7a94eb4
@@ -96,10 +97,11 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.4.0
-	github.com/stoewer/go-strcase v1.2.0
-	github.com/stretchr/testify v1.6.1
-	github.com/tektoncd/pipeline v0.11.3
+	github.com/spf13/viper v1.3.2
+	github.com/stoewer/go-strcase v1.0.1
+	github.com/stretchr/testify v1.4.0
+	github.com/subchen/go-xmldom v1.1.2
+	github.com/tektoncd/pipeline v0.8.0
 	github.com/trivago/tgo v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/viniciuschiele/tarx v0.0.0-20151205142357-6e3da540444d // indirect

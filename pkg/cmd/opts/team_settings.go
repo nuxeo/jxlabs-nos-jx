@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/jenkins-x/jx/v2/pkg/config"
+	"github.com/jenkins-x/jx/v2/pkg/helm"
 	"github.com/jenkins-x/jx/v2/pkg/kube/cluster"
+	"github.com/jenkins-x/jx/v2/pkg/util"
 
 	"github.com/jenkins-x/jx/v2/pkg/environments"
 

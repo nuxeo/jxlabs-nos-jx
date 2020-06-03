@@ -10,7 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jenkins-x/jx/v2/pkg/envctx"
 	"github.com/jenkins-x/jx/v2/pkg/kube/naming"
+	"github.com/jenkins-x/jx/v2/pkg/versionstream"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/jenkins-x/jx/v2/pkg/kube"
@@ -30,8 +33,6 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/helm"
 	"github.com/jenkins-x/jx/v2/pkg/util"
 	"github.com/pkg/errors"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 // InstallOptions are shared options for installing, removing or upgrading apps for either GitOps or HelmOps

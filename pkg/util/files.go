@@ -576,7 +576,7 @@ func WhichBinary(binaryName string) string {
 	paths := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
 	for _, p := range paths {
 		fullPath := filepath.Join(p, binaryName)
-		exists, err := util.FileExists(fullPath)
+		exists, err := FileExists(fullPath)
 		if err == nil && exists {
 			return fullPath
 		}

@@ -10,9 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jenkins-x/jx/pkg/cmd/testhelpers"
-	"github.com/jenkins-x/jx/pkg/gits"
-	"github.com/jenkins-x/jx/pkg/helm"
 	v1 "k8s.io/api/core/v1"
 
 	mocks "github.com/jenkins-x/jx/v2/pkg/cmd/clients/mocks"

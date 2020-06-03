@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
-	"github.com/jenkins-x/jx/pkg/cloud"
+	"github.com/jenkins-x/jx/v2/pkg/cloud"
 
 	"github.com/jenkins-x/jx/v2/pkg/versionstream"
 
