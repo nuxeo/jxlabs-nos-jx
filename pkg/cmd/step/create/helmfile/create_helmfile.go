@@ -10,7 +10,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jenkins-x/jx/v2/pkg/cloud"
 	"github.com/jenkins-x/jx/v2/pkg/config"
+	"github.com/jenkins-x/jx/v2/pkg/envctx"
+	"github.com/jenkins-x/jx/v2/pkg/kube"
+	"github.com/jenkins-x/jx/v2/pkg/versionstream"
+
 	helmfile2 "github.com/jenkins-x/jx/v2/pkg/helmfile"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

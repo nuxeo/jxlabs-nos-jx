@@ -16,8 +16,6 @@ require (
 	github.com/TV4/logrus-stackdriver-formatter v0.1.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20190504002508-159cbd5dba26
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/alexflint/go-filemutex v0.0.0-20171028004239-d358565f3c3f
 	github.com/andygrunwald/go-gerrit v0.0.0-20181026193842-43cfd7a94eb4
 	github.com/andygrunwald/go-jira v1.5.0
@@ -105,6 +103,7 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stoewer/go-strcase v1.0.1
 	github.com/stretchr/testify v1.4.0
+	github.com/subchen/go-xmldom v1.1.2
 	github.com/tektoncd/pipeline v0.8.0
 	github.com/trivago/tgo v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect
@@ -124,7 +123,6 @@ require (
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	golang.org/x/tools v0.0.0-20200415034506-5d8e1897c761
 	gopkg.in/AlecAivazis/survey.v1 v1.8.3
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190718183219-b59d8169aab5

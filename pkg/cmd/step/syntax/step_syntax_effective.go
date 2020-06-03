@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts/step"
+	"github.com/jenkins-x/jx/v2/pkg/tekton/metapipeline"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/jenkins-x/jx/v2/pkg/versionstream"
