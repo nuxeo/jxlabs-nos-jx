@@ -1,1 +1,1 @@
-{"version":1,"ops":[{"type":4,"author":{"id":"ea2e1ad77645649622fa8854506607d2d5036fb5"},"timestamp":1591346783,"status":1}]}
+{"version":1,"ops":[{"type":3,"author":{"id":"ea2e1ad77645649622fa8854506607d2d5036fb5"},"timestamp":1591346889,"message":"add tag for tracking builds in next-version, and added an explicit step for tagging the version using jx","files":null}]}
