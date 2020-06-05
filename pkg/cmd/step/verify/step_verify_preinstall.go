@@ -32,7 +32,6 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/kube/cluster"
 	"github.com/jenkins-x/jx/v2/pkg/kube/naming"
 	"github.com/jenkins-x/jx/v2/pkg/log"
-	"github.com/jenkins-x/jx/v2/pkg/packages"
 	"github.com/jenkins-x/jx/v2/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -199,11 +198,6 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 	}
 	log.Logger().Info("\n")
 
-	err = o.installMissingDependencies()
-	if err != nil {
-		return err
-	}
-
 	po := &StepVerifyPackagesOptions{}
 	po.CommonOptions = o.CommonOptions
 	po.Packages = []string{"kubectl", "git", "helm"}
@@ -298,14 +292,6 @@ func (o *StepVerifyPreInstallOptions) Run() error {
 	log.Logger().Infof("Cluster looks good, you are ready to '%s' now!", info("jx boot"))
 	fmt.Println()
 	return nil
-}
-
-// installMissingDependencies installs missing deps like helm and kubectl
-func (o *StepVerifyPreInstallOptions) installMissingDependencies() error {
-	var deps []string
-	deps = packages.AddRequiredBinary("kubectl", deps)
-	deps = packages.AddRequiredBinary("helm", deps)
-	return o.DoInstallMissingDependencies(deps)
 }
 
 // EnsureHelm ensures helm is installed
