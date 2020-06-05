@@ -1,42 +1,20 @@
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-credential-initializer-qw9hs[0m
-{"level":"info","ts":1589869936.023158,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
-{"level":"info","ts":1589869936.0245707,"logger":"fallback-logger","caller":"creds-init/main.go:40","msg":"Credentials initialized."}
+Showing logs for build [32mnuxeo-jxlabs-nos-jx-master-rele-wjstl-18[0m stage [32mrelease[0m and container [32mstep-credential-initializer-r4fr7[0m
+{"level":"info","ts":1591346004.1054366,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
+{"level":"info","ts":1591346004.1088097,"logger":"fallback-logger","caller":"creds-init/main.go:40","msg":"Credentials initialized."}
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-working-dir-initializer-f9jdb[0m
-{"level":"info","ts":1589869937.4394755,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/HEAD: no such file or directory"}
-{"level":"info","ts":1589869937.4942214,"logger":"fallback-logger","caller":"bash/main.go:64","msg":"Successfully executed command \"sh -c mkdir -p /workspace/source\"; output "}
+Showing logs for build [32mnuxeo-jxlabs-nos-jx-master-rele-wjstl-18[0m stage [32mrelease[0m and container [32mstep-working-dir-initializer-8w2l8[0m
+{"level":"info","ts":1591346005.009215,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/HEAD: no such file or directory"}
+{"level":"info","ts":1591346005.0123694,"logger":"fallback-logger","caller":"bash/main.go:64","msg":"Successfully executed command \"sh -c mkdir -p /workspace/source\"; output "}
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-place-tools[0m
+Showing logs for build [32mnuxeo-jxlabs-nos-jx-master-rele-wjstl-18[0m stage [32mrelease[0m and container [32mstep-place-tools[0m
 
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-source-meta-nuxeo-jxlabs-nos-jx-master-k7rtr-9vhnk[0m
-{"level":"info","ts":1589869943.5730507,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
-{"level":"info","ts":1589869945.306848,"logger":"fallback-logger","caller":"git/git.go:103","msg":"Successfully cloned https://github.com/nuxeo/**labs-nos-**.git @ 271543d0e484aabe1f447a3f7c48f4d139614fb0 in path /workspace/source"}
-
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-git-merge[0m
-Using SHAs from PULL_REFS=master:271543d0e484aabe1f447a3f7c48f4d139614fb0
-WARNING: no SHAs to merge, falling back to initial cloned commit
-
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-merge-pull-refs[0m
-SKIP merge-pull-refs: Nothing to merge
-
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-create-effective-pipeline[0m
-Effective pipeline written to jenkins-x-release-effective.yml
-
-Showing logs for build [32mmeta-nuxeo-jxlabs-nos-jx-master-k7rtr-18[0m stage [32mmeta-pipeline[0m and container [32mstep-create-tekton-crds[0m
-running command: /workspace/source/next-version.sh
-++ git fetch --tags --quiet
-+++ git for-each-ref refs/tags/ --count=1 --sort=-version:refname '--format=%(refname:short)'
-+++ git rev-parse --short HEAD
-++ version=v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev+271543d0e
-+++ echo v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev+271543d0e
-+++ sed s/+/-/g
-++ version=v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
-++ git tag v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
-++ git push -f origin v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e
-To https://github.com/nuxeo/**labs-nos-**.git
- ! [remote rejected]     v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e -> v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e (cannot lock ref 'refs/tags/v2.1.38-**labs-nos-dev-00fc5a7dc-dev-00fc5a7dc-dev-d19734631-dev-271543d0e': reference already exists)
-error: failed to push some refs to 'https://github.com/nuxeo/**labs-nos-**.git'
-error: failed to set the version on release pipelines: failed to run '/bin/sh -c /workspace/source/next-version.sh' command in directory '/workspace/source', output: ''
+Showing logs for build [32mnuxeo-jxlabs-nos-jx-master-rele-wjstl-18[0m stage [32mrelease[0m and container [32mstep-git-source-nuxeo-jxlabs-nos-jx-master-rele-wjstl-6zrhc[0m
+{"level":"info","ts":1591346010.1477468,"logger":"fallback-logger","caller":"logging/config.go:69","msg":"Fetch GitHub commit ID from kodata failed: open /var/run/ko/refs/heads/0.8.0-ns-support: no such file or directory"}
+{"level":"error","ts":1591346010.2871253,"logger":"fallback-logger","caller":"git/git.go:40","msg":"Error running git [fetch --depth=1 --recurse-submodules=yes origin v2.1.56-**labs-nos-3]: exit status 128\nfatal: couldn't find remote ref v2.1.56-**labs-nos-3\n","stacktrace":"github.com/tektoncd/pipeline/pkg/git.run\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:40\ngithub.com/tektoncd/pipeline/pkg/git.Fetch\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:91\nmain.main\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/cmd/git-init/main.go:39\nruntime.main\n\t/usr/local/Cellar/go@1.12/1.12.17/libexec/src/runtime/proc.go:200"}
+{"level":"error","ts":1591346015.715764,"logger":"fallback-logger","caller":"git/git.go:40","msg":"Error running git [pull --recurse-submodules=yes origin]: exit status 1\nFrom https://github.com/nuxeo/**labs-nos-**\n * [new branch]      1109                 -> origin/1109\n * [new branch]      MarckK-patch-1       -> origin/MarckK-patch-1\n * [new branch]      ccojocar-patch-1     -> origin/ccojocar-patch-1\n * [new branch]      cover-bdd4           -> origin/cover-bdd4\n * [new branch]      feature/use_image_just_built -> origin/feature/use_image_just_built\n * [new branch]      garethjevans-patch-1 -> origin/garethjevans-patch-1\n * [new branch]      garethjevans-patch-2 -> origin/garethjevans-patch-2\n * [new branch]      gh-pages             -> origin/gh-pages\n * [new branch]      issue-5772           -> origin/issue-5772\n * [new branch]      jstrachan-patch-1    -> origin/jstrachan-patch-1\n * [new branch]      jstrachan-patch-2    -> origin/jstrachan-patch-2\n * [new branch]      jstrachan-patch-3    -> origin/jstrachan-patch-3\n * [new branch]      jstrachan-patch-4    -> origin/jstrachan-patch-4\n * [new branch]      jstrachan-patch-5    -> origin/jstrachan-patch-5\n * [new branch]      **labs-nos           -> origin/**labs-nos\n * [new branch]      manual-promotion-no-pa-update -> origin/manual-promotion-no-pa-update\n * [new branch]      master               -> origin/master\n * [new branch]      multicluster         -> origin/multicluster\n * [new branch]      plugins              -> origin/plugins\n * [new branch]      pmuir-patch-1        -> origin/pmuir-patch-1\n * [new branch]      pmuir-patch-2        -> origin/pmuir-patch-2\n * [new branch]      pmuir-patch-3        -> origin/pmuir-patch-3\n * [new branch]      pmuir-patch-4        -> origin/pmuir-patch-4\n * [new branch]      pmuir-patch-5        -> origin/pmuir-patch-5\n * [new branch]      pmuir-patch-6        -> origin/pmuir-patch-6\n * [new branch]      pmuir-patch-7        -> origin/pmuir-patch-7\n * [new branch]      pmuir-patch-7-1      -> origin/pmuir-patch-7-1\n * [new branch]      pmuir-patch-8        -> origin/pmuir-patch-8\n * [new branch]      pmuir-patch-9        -> origin/pmuir-patch-9\n * [new branch]      prow-2.0             -> origin/prow-2.0\n * [new branch]      revert-4572-add_brew_update_config -> origin/revert-4572-add_brew_update_config\n * [new branch]      revert-5110-5087     -> origin/revert-5110-5087\n * [new branch]      revert-5295-5034     -> origin/revert-5295-5034\n * [new branch]      revert-5585-stop-using-workingdir-for-dir -> origin/revert-5585-stop-using-workingdir-for-dir\n * [new branch]      revert-5612-credentials-remove-file-flag -> origin/revert-5612-credentials-remove-file-flag\n * [new branch]      revert-6556-garethjevans-patch-2 -> origin/revert-6556-garethjevans-patch-2\n * [new branch]      theia                -> origin/theia\n * [new branch]      windows-tests        -> origin/windows-tests\n * [new tag]             t2.1.56-**labs-nos-2 -> t2.1.56-**labs-nos-2\n * [new tag]             v2.1.56              -> v2.1.56\n * [new tag]             v2.1.56-**labs-nos-1 -> v2.1.56-**labs-nos-1\n * [new tag]             v2.1.56-**labs-nos-2 -> v2.1.56-**labs-nos-2\nYou asked to pull from the remote 'origin', but did not specify\na branch. Because this is not the default configured remote\nfor your current branch, you must specify a branch on the command line.\n","stacktrace":"github.com/tektoncd/pipeline/pkg/git.run\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:40\ngithub.com/tektoncd/pipeline/pkg/git.Fetch\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:94\nmain.main\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/cmd/git-init/main.go:39\nruntime.main\n\t/usr/local/Cellar/go@1.12/1.12.17/libexec/src/runtime/proc.go:200"}
+{"level":"warn","ts":1591346015.7168214,"logger":"fallback-logger","caller":"git/git.go:95","msg":"Failed to pull origin : exit status 1"}
+{"level":"error","ts":1591346015.7188494,"logger":"fallback-logger","caller":"git/git.go:40","msg":"Error running git [checkout v2.1.56-**labs-nos-3]: exit status 1\nerror: pathspec 'v2.1.56-**labs-nos-3' did not match any file(s) known to git\n","stacktrace":"github.com/tektoncd/pipeline/pkg/git.run\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:40\ngithub.com/tektoncd/pipeline/pkg/git.Fetch\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/pkg/git/git.go:97\nmain.main\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/cmd/git-init/main.go:39\nruntime.main\n\t/usr/local/Cellar/go@1.12/1.12.17/libexec/src/runtime/proc.go:200"}
+{"level":"fatal","ts":1591346015.7189157,"logger":"fallback-logger","caller":"git-init/main.go:40","msg":"Error fetching git repository: exit status 1","stacktrace":"main.main\n\t/Users/abayer/go/src/github.com/tektoncd/pipeline/cmd/git-init/main.go:40\nruntime.main\n\t/usr/local/Cellar/go@1.12/1.12.17/libexec/src/runtime/proc.go:200"}
 [31m
-Pipeline failed on stage 'meta-pipeline' : container 'step-create-tekton-crds'. The execution of the pipeline has stopped.[0m
+Pipeline failed on stage 'release' : container 'step-git-source-nuxeo-jxlabs-nos-jx-master-rele-wjstl-6zrhc'. The execution of the pipeline has stopped.[0m
