@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/jenkins-x/jx/v2/pkg/log"
+	"github.com/jenkins-x/jx-logging/pkg/log"
 	batchv1 "k8s.io/api/batch/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        jenkinsv1 "github.com/jenkins-x/jx-api/pkg/apis/jenkins.io/v1"
 )
 
 const (
@@ -237,7 +238,7 @@ type TeamSettings struct {
 
 	// AppsPrefixes is the list of prefixes for appNames
 	AppsPrefixes     []string          `json:"appPrefixes,omitempty" protobuf:"bytes,27,opt,name=appPrefixes"`
-	DefaultScheduler ResourceReference `json:"defaultScheduler,omitempty" protobuf:"bytes,28,opt,name=defaultScheduler"`
+	DefaultScheduler jenkinsv1.ResourceReference `json:"defaultScheduler,omitempty" protobuf:"bytes,28,opt,name=defaultScheduler"`
 
 	// ProwConfig is the way we manage prow configurations
 	ProwConfig ProwConfigType `json:"prowConfig,omitempty" protobuf:"bytes,29,opt,name=prowConfig"`

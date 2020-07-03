@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	v1 "github.com/jenkins-x/jx/v2/pkg/apis/jenkins.io/v1"
+	v1 "github.com/jenkins-x/jx-api/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx/v2/pkg/config"
 	"github.com/jenkins-x/jx/v2/pkg/helmfile"
 	"github.com/jenkins-x/jx/v2/pkg/kube"

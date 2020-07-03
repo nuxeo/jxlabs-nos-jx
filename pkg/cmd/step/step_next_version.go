@@ -413,7 +413,6 @@ func (o *StepNextVersionOptions) SetVersion() error {
 		}
 		output = strings.Join(lines, "\n")
 	}
-	output := strings.Join(lines, "\n")
 	err = ioutil.WriteFile(filename, []byte(output), 0644)
 	if err != nil {
 		return err

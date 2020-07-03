@@ -934,25 +934,8 @@ func (c *RequirementsConfig) OverrideRequirementsFromEnvironment(gcloudFn func()
 			}
 		}
 	}
-<<<<<<< HEAD
 
 	// StorageConfig is reused between multiple storage configuration types and needs to be handled explicitly
-||||||| parent of bebbdd301... squashed multicluster branch https://github.com/jenkins-x/jx/tree/multicluster
-	if "" != os.Getenv(RequirementKaniko) {
-		kaniko := os.Getenv(RequirementKaniko)
-		if envVarBoolean(kaniko) {
-			c.Kaniko = true
-		}
-	}
-	if "" != os.Getenv(RequirementRepository) {
-		repositoryString := os.Getenv(RequirementRepository)
-		c.Repository = RepositoryType(repositoryString)
-	}
-	if "" != os.Getenv(RequirementWebhook) {
-		webhookString := os.Getenv(RequirementWebhook)
-		c.Webhook = WebhookType(webhookString)
-	}
-=======
 	if "" != os.Getenv(RequirementHelmfile) {
 		if envVarBoolean(os.Getenv(RequirementHelmfile)) {
 			c.Helmfile = true
@@ -972,7 +955,6 @@ func (c *RequirementsConfig) OverrideRequirementsFromEnvironment(gcloudFn func()
 		webhookString := os.Getenv(RequirementWebhook)
 		c.Webhook = WebhookType(webhookString)
 	}
->>>>>>> bebbdd301... squashed multicluster branch https://github.com/jenkins-x/jx/tree/multicluster
 	if "" != os.Getenv(RequirementStorageBackupEnabled) {
 		storageBackup := os.Getenv(RequirementStorageBackupEnabled)
 		if envVarBoolean(storageBackup) && "" != os.Getenv(RequirementStorageBackupURL) {

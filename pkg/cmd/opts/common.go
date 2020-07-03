@@ -18,9 +18,6 @@ import (
 
 	vaultoperatorclient "github.com/banzaicloud/bank-vaults/operator/pkg/client/clientset/versioned"
 	certmngclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
-	istioclient "github.com/knative/pkg/client/clientset/versioned"
-	kserve "github.com/knative/serving/pkg/client/clientset/versioned"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"gopkg.in/AlecAivazis/survey.v1"
