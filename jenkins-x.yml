@@ -81,8 +81,11 @@ pipelineConfig:
               - name: build-and-push-image
                 image: gcr.io/kaniko-project/executor:v0.22.0
                 command: /kaniko/executor
-                args: [ '--dockerfile=/workspace/source/Dockerfile', '--destination=gcr.io/build-jx-prod/jxlabs-nos-master/jx:${inputs.params.version}', '--destination=gcr.io/build-jx-prod/jxlabs-nos-master/jx:latest', '--context=/workspace/source', '--cache-dir=/workspace']
-
+                sh: /kaniko/executor --dockerfile=/workspace/source/Dockerfile
+                  --context=/workspace/source
+                  --cache-dir=/workspace --cache=true
+                  --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:$VERSION
+                  --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:latest
               - name: release-charts
                 image: gcr.io/jenkinsxio/builder-go
                 command: make
