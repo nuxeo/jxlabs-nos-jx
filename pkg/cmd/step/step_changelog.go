@@ -630,13 +630,13 @@ func (o *StepChangelogOptions) addCommit(spec *v1.ReleaseSpec, commit *object.Co
 	if commit.Author.Email != "" && commit.Author.Name != "" {
 		author, err = resolver.GitSignatureAsUser(&commit.Author)
 		if err != nil {
-			log.Logger().Warnf("Failed to enrich commit %s with issues: %v", sha, err)
+			log.Logger().Warnf("failed to enrich commit with issues, error getting git signature for git author %s: %v", commit.Author, err)
 		}
 	}
 	if commit.Committer.Email != "" && commit.Committer.Name != "" {
 		committer, err = resolver.GitSignatureAsUser(&commit.Committer)
 		if err != nil {
-			log.Logger().Warnf("Failed to enrich commit %s with issues: %v", sha, err)
+			log.Logger().Warnf("failed to enrich commit with issues, error getting git signature for git committer %s: %v", commit.Committer, err)
 		}
 	}
 	var authorDetails, committerDetails v1.UserDetails
@@ -727,9 +727,8 @@ func (o *StepChangelogOptions) addIssuesAndPullRequests(spec *v1.ReleaseSpec, co
 				} else {
 					u, err := resolver.Resolve(issue.User)
 					if err != nil {
-						return err
-					}
-					if u != nil {
+						log.Logger().Warnf("Failed to resolve user %v for issue %s repository %s", issue.User, result, tracker.HomeURL())
+					} else if u != nil {
 						user = u.Spec
 					}
 				}
@@ -740,9 +739,8 @@ func (o *StepChangelogOptions) addIssuesAndPullRequests(spec *v1.ReleaseSpec, co
 				} else {
 					u, err := resolver.Resolve(issue.User)
 					if err != nil {
-						return err
-					}
-					if u != nil {
+						log.Logger().Warnf("Failed to resolve closedBy user %v for issue %s repository %s", issue.User, result, tracker.HomeURL())
+					} else if u != nil {
 						closedBy = u.Spec
 					}
 				}
@@ -753,7 +751,7 @@ func (o *StepChangelogOptions) addIssuesAndPullRequests(spec *v1.ReleaseSpec, co
 				} else {
 					u, err := resolver.GitUserSliceAsUserDetailsSlice(issue.Assignees)
 					if err != nil {
-						return err
+						log.Logger().Warnf("Failed to resolve Assignees %v for issue %s repository %s", issue.Assignees, result, tracker.HomeURL())
 					}
 					assignees = u
 				}

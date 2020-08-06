@@ -19,12 +19,15 @@ import (
 )
 
 const (
-	// DependencyMatrixDirName is the name of the directory in which the dependency matrix is stored in git
-	DependencyMatrixDirName = "dependency-matrix"
 	// DependencyMatrixYamlFileName is the name of file in which the dependency matrix will be stored
 	DependencyMatrixYamlFileName = "matrix.yaml"
 	// DependencyMatrixAssetName is the name of the asset when the dependency matrix is added to the release on the git provider
 	DependencyMatrixAssetName = "dependency-matrix.yaml"
+)
+
+var (
+	// DependencyMatrixDirName is the name of the directory in which the dependency matrix is stored in git
+	DependencyMatrixDirName = "dependency-matrix"
 )
 
 // DependencyMatrix is the dependency matrix for a git repo
@@ -234,7 +237,17 @@ func UpdateDependencyMatrix(dir string, update *v1.DependencyUpdate) error {
 	if err != nil {
 		return errors.Wrapf(err, "writing %s", path)
 	}
-	err = GenerateMarkdownDependencyMatrix(filepath.Join(dir, DependencyMatrixDirName, "matrix.md"), dependencyMatrix)
+
+	// lets default to README.md unless we already have a matrix.md file
+	markdownFile := filepath.Join(dir, DependencyMatrixDirName, "matrix.md")
+	exists, err := util.FileExists(markdownFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to check if file exists %s", markdownFile)
+	}
+	if !exists {
+		markdownFile = filepath.Join(dir, DependencyMatrixDirName, "README.md")
+	}
+	err = GenerateMarkdownDependencyMatrix(markdownFile, dependencyMatrix)
 	if err != nil {
 		return errors.WithStack(err)
 	}

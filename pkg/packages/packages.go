@@ -29,7 +29,7 @@ const EksCtlVersion = "0.11.1"
 const KubectlVersion = "1.16.5"
 
 // Helm2Version binary version to use
-const Helm2Version = "2.12.2"
+const Helm2Version = "2.16.9"
 
 // Helm3Version binary version to use
 const Helm3Version = "3.2.0"
@@ -40,8 +40,8 @@ const KustomizeVersion = "3.5.1"
 // GlooVersion binary version to use
 const GlooVersion = "1.3.23"
 
-// GlobalBinaryPathWhitelist binaries that require to be on the path but do not need to exist in JX_HOME/bin
-var GlobalBinaryPathWhitelist = []string{
+// GlobalBinaryPathAllowlist binaries that require to be on the path but do not need to exist in JX_HOME/bin
+var GlobalBinaryPathAllowlist = []string{
 	"az",
 	"gcloud",
 	"oc",

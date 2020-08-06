@@ -20,7 +20,7 @@ import (
 
 // GetAppsOptions containers the CLI options
 type GetAppsOptions struct {
-	GetOptions
+	Options
 	Namespace  string
 	ShowStatus bool
 	GitOps     bool
@@ -79,7 +79,7 @@ var (
 // NewCmdGetApps creates the new command for: jx get version
 func NewCmdGetApps(commonOpts *opts.CommonOptions) *cobra.Command {
 	options := &GetAppsOptions{
-		GetOptions: GetOptions{
+		Options: Options{
 			CommonOptions: commonOpts,
 		},
 	}
@@ -103,17 +103,8 @@ func NewCmdGetApps(commonOpts *opts.CommonOptions) *cobra.Command {
 
 // Run implements this command
 func (o *GetAppsOptions) Run() error {
-	ec, err := o.EnvironmentContext(".", false)
-	if err != nil {
-		return err
-	}
-	o.GitOps = ec.GitOps
-	o.DevEnv = ec.DevEnv
-
-	if err != nil {
-		return err
-	}
-	kubeClient, err := o.GetOptions.KubeClient()
+	o.GitOps, o.DevEnv = o.GetDevEnv()
+	kubeClient, err := o.Options.KubeClient()
 	if err != nil {
 		return err
 	}
@@ -121,7 +112,7 @@ func (o *GetAppsOptions) Run() error {
 	if err != nil {
 		return errors.Wrapf(err, "getting jx client")
 	}
-	envsDir, err := o.GetOptions.EnvironmentsDir()
+	envsDir, err := o.Options.EnvironmentsDir()
 	if err != nil {
 		return errors.Wrap(err, "getting the the GitOps environments dir")
 	}
@@ -134,7 +125,6 @@ func (o *GetAppsOptions) Run() error {
 		Helmer:              o.Helm(),
 		JxClient:            jxClient,
 		EnvironmentCloneDir: envsDir,
-		VersionResolver:     ec.VersionResolver,
 	}
 
 	if o.GetSecretsLocation() == secrets.VaultLocationKind {
@@ -236,6 +226,7 @@ func (o *GetAppsOptions) generateTable(apps *v1.AppList, kubeClient kubernetes.I
 				table.AddRow(row...)
 			}
 		}
+
 	}
 	return table
 }

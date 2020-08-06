@@ -18,7 +18,7 @@ import (
 
 	"github.com/jenkins-x/jx/v2/pkg/kube"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -121,7 +121,9 @@ func (o *InstallOptions) AddApp(details *envctx.ChartDetails, version string, us
 			if releaseName == "" {
 				releaseName = fmt.Sprintf("%s-%s", o.Namespace, chartDetails.Name)
 			}
-			if helm.IsLocal(chartName) {
+
+			chartFromGit, _ := helm.IsGitURL(chartName)
+			if helm.IsLocal(chartName) || chartFromGit {
 				// We need to manually build the dependencies
 				err = opts.Helmer.BuildDependency()
 				if err != nil {
@@ -380,7 +382,8 @@ func (o *InstallOptions) createInterrogateChartFn(version string, chartName stri
 				return &chartDetails, errors.Wrapf(err, "locating app resource in %s", chartDir)
 			}
 			if appResource.Spec.SchemaPreprocessor != nil {
-				id := uuid.New()
+				// Generate a new UUID and get it's string form for use later
+				id := uuid.New().String()
 				cmName := toValidName(chartDetails.Name, "schema", id)
 				cm := corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{

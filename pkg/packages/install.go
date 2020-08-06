@@ -14,9 +14,9 @@ import (
 
 	"github.com/jenkins-x/jx-logging/pkg/log"
 
+	"github.com/google/uuid"
 	"github.com/jenkins-x/jx/v2/pkg/util"
 	"github.com/jenkins-x/jx/v2/pkg/versionstream"
-	"github.com/pborman/uuid"
 )
 
 // InstallOrUpdateBinary installs or updates a binary
@@ -100,7 +100,7 @@ func InstallOrUpdateBinary(options InstallOrUpdateBinaryOptions) error {
 	}
 	if options.Archived {
 		if extension == "zip" {
-			zipDir := filepath.Join(binDir, options.Binary+"-tmp-"+uuid.NewUUID().String())
+			zipDir := filepath.Join(binDir, options.Binary+"-tmp-"+uuid.New().String())
 			err = os.MkdirAll(zipDir, util.DefaultWritePermissions)
 			if err != nil {
 				return err
@@ -187,7 +187,7 @@ func ShouldInstallBinary(name string) (bool, error) {
 		return download, errors.Wrapf(err, "unable to find JXBinLocation at %s", binDir)
 	}
 
-	if util.Contains(GlobalBinaryPathWhitelist, name) {
+	if util.Contains(GlobalBinaryPathAllowlist, name) {
 		_, err = exec.LookPath(fileName)
 		if err != nil {
 			log.Logger().Warnf("%s is not available on your PATH", util.ColorInfo(fileName))

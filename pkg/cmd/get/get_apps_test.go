@@ -13,8 +13,8 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/cmd/get"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/testhelpers"
 
+	"github.com/google/uuid"
 	"github.com/jenkins-x/jx/v2/pkg/helm"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/acarl005/stripansi"
 	"github.com/jenkins-x/jx/v2/pkg/tests"
@@ -29,7 +29,7 @@ const (
 func TestGetAppsGitops(t *testing.T) {
 	tests.SkipForWindows(t, "NewTerminal() does not work on windows")
 	pegomock.RegisterMockTestingT(t)
-	name1UUID, err := uuid.NewV4()
+	name1UUID, err := uuid.NewUUID()
 	assert.NoError(t, err)
 	name1 := name1UUID.String()
 	testOptions := testhelpers.CreateAppTestOptions(true, name1, t)
@@ -42,7 +42,7 @@ func TestGetAppsGitops(t *testing.T) {
 	assert.NoError(t, err)
 
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 	}
@@ -75,7 +75,7 @@ func TestGetApps(t *testing.T) {
 	name2, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,
@@ -109,7 +109,7 @@ func TestGetAppsWithErrorGettingStatus(t *testing.T) {
 	_, _, _, err = testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,
@@ -147,7 +147,7 @@ func TestGetAppsWithErrorGettingStatusWithOutput(t *testing.T) {
 	_, _, _, err = testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 			Output:        "json",
 		},
@@ -186,7 +186,7 @@ func TestGetApp(t *testing.T) {
 	name2, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,
@@ -221,7 +221,7 @@ func TestGetAppWithShortName(t *testing.T) {
 	name2, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,
@@ -253,7 +253,7 @@ func TestGetAppsHasStatus(t *testing.T) {
 	name1, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,
@@ -291,7 +291,7 @@ func TestGetAppsAsJson(t *testing.T) {
 	name1, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 			Output:        "json",
 		},
@@ -335,7 +335,7 @@ func TestGetAppsAsYaml(t *testing.T) {
 	name1, _, _, err := testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 			Output:        "yaml",
 		},
@@ -382,7 +382,7 @@ func TestGetAppNotFound(t *testing.T) {
 	_, _, _, err = testOptions.AddApp(nil, "")
 	assert.NoError(t, err)
 	getAppOptions := &get.GetAppsOptions{
-		GetOptions: get.GetOptions{
+		Options: get.Options{
 			CommonOptions: testOptions.CommonOptions,
 		},
 		Namespace: namespace,

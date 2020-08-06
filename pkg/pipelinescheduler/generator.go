@@ -16,12 +16,12 @@ import (
 	"github.com/jenkins-x/jx/v2/pkg/kube/naming"
 	"github.com/jenkins-x/jx/v2/pkg/prow"
 
+	"github.com/google/uuid"
 	"github.com/jenkins-x/jx/v2/pkg/environments"
 	"github.com/jenkins-x/jx/v2/pkg/gits"
 	"github.com/jenkins-x/jx/v2/pkg/helm"
-	"github.com/jenkins-x/lighthouse-config/pkg/config"
-	"github.com/jenkins-x/lighthouse-config/pkg/plugins"
-	uuid "github.com/satori/go.uuid"
+	"github.com/jenkins-x/lighthouse/pkg/config"
+	"github.com/jenkins-x/lighthouse/pkg/plugins"
 	v1 "k8s.io/api/core/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -533,7 +533,7 @@ type GitOpsOptions struct {
 
 // AddToEnvironmentRepo adds the prow config to the gitops environment repo
 func (o *GitOpsOptions) AddToEnvironmentRepo(cfg *config.Config, plugs *plugins.Configuration, kubeClient kubernetes.Interface, namespace string) error {
-	branchNameUUID, err := uuid.NewV4()
+	branchNameUUID, err := uuid.NewUUID()
 	if err != nil {
 		return errors.Wrapf(err, "creating creating branch name")
 	}
@@ -606,31 +606,31 @@ func (o *GitOpsOptions) RegisterProwConfigUpdater(kubeClient kubernetes.Interfac
 		return errors.Wrapf(err, "getting plugins configmap")
 	}
 	pluginConfig.ConfigUpdater.Maps = make(map[string]plugins.ConfigMapSpec)
-	pluginConfig.ConfigUpdater.Maps["env/prow/config.yaml"] = plugins.ConfigMapSpec{Name: prow.ProwConfigMapName}
-	pluginConfig.ConfigUpdater.Maps["env/prow/plugins.yaml"] = plugins.ConfigMapSpec{Name: prow.ProwPluginsConfigMapName}
+	pluginConfig.ConfigUpdater.Maps["env/prow/config.yaml"] = plugins.ConfigMapSpec{Name: prow.ConfigMapName}
+	pluginConfig.ConfigUpdater.Maps["env/prow/plugins.yaml"] = plugins.ConfigMapSpec{Name: prow.PluginsConfigMapName}
 	pluginYAML, err := yaml.Marshal(pluginConfig)
 	if err != nil {
 		return errors.Wrap(err, "marshaling the prow plugins")
 	}
 
 	data := make(map[string]string)
-	data[prow.ProwPluginsFilename] = string(pluginYAML)
+	data[prow.PluginsFilename] = string(pluginYAML)
 	cm := &v1.ConfigMap{
 		Data: data,
 		ObjectMeta: metav1.ObjectMeta{
-			Name: prow.ProwPluginsConfigMapName,
+			Name: prow.PluginsConfigMapName,
 		},
 	}
 	_, err = kubeClient.CoreV1().ConfigMaps(namespace).Update(cm)
 	if err != nil {
-		err = errors.Wrapf(err, "updating the config map %q", prow.ProwPluginsConfigMapName)
+		err = errors.Wrapf(err, "updating the config map %q", prow.PluginsConfigMapName)
 	}
 	return nil
 }
 
 // AddSchedulersToEnvironmentRepo adds the prow config to the gitops environment repo
 func (o *GitOpsOptions) AddSchedulersToEnvironmentRepo(sourceRepositoryGroups []*jenkinsv1.SourceRepositoryGroup, sourceRepositories []*jenkinsv1.SourceRepository, schedulers map[string]*jenkinsv1.Scheduler) error {
-	branchNameUUID, err := uuid.NewV4()
+	branchNameUUID, err := uuid.NewUUID()
 	if err != nil {
 		return errors.Wrapf(err, "creating creating branch name")
 	}
