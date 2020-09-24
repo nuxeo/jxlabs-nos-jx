@@ -151,7 +151,11 @@ func (o *StepVerifyIngressOptions) Run() error {
 	return requirements.SaveConfig(requirementsFileName)
 }
 
-func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.RequirementsConfig, requirementsFileName string, appsConfig *config.AppConfig) error {
+func (o *StepVerifyIngressOptions) discoverIngressDomain(requirements *config.RequirementsConfig, requirementsFileName string) error {
+	if requirements.Ingress.IgnoreLoadBalancer {
+		log.Logger().Infof("ignoring the load balancer to detect a public ingress domain")
+		return nil
+	}
 	client, err := o.KubeClient()
 	var domain string
 	if err != nil {

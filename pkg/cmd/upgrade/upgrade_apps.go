@@ -112,12 +112,13 @@ func NewCmdUpgradeApps(commonOpts *opts.CommonOptions) *cobra.Command {
 
 // Run implements the command
 func (o *UpgradeAppsOptions) Run() error {
-	ec, err := o.EnvironmentContext(".", false)
-	if err != nil {
-		return err
+	o.GitOps, o.DevEnv = o.GetDevEnv()
+	if o.DevEnv == nil {
+		return helper.ErrDevEnvNotFound
 	}
-	o.GitOps = ec.GitOps
-	o.DevEnv = ec.DevEnv
+	if o.Repo == "" {
+		o.Repo = o.DevEnv.Spec.TeamSettings.AppsRepository
+	}
 
 	kubeClient, err := o.KubeClient()
 	if err != nil {

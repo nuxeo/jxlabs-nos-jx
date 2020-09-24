@@ -1,10 +1,15 @@
 # JX
+-	Website: https://jenkins-x.io/
+-   Slack channels (part of kubernetes workspace):
+    -   [#jenkins-x-user](https://app.slack.com/client/T09NY5SBT/C9MBGQJRH) for users of Jenkins X
+    -   [#jenkins-x-dev](https://app.slack.com/client/T09NY5SBT/C9LTHT2BB) for developers of Jenkins X
+-   Discourse forum: [Discourse](https://jenkinsx.discourse.group/)
 
 JX is a command line tool for installing and using [Jenkins X](https://jenkins-x.io/).
 
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3237/badge)](https://bestpractices.coreinfrastructure.org/projects/3237)
 [![GoDoc](https://godoc.org/github.com/jenkins-x/jx?status.svg)](https://godoc.org/github.com/jenkins-x/jx)
-[![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](https://jenkins-x.io/documentation/)
+[![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](https://jenkins-x.io/docs/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/jenkinsxio/jx.svg)](https://hub.docker.com/r/jenkinsxio/jx/tags)
 [![Downloads](https://img.shields.io/github/downloads/jenkins-x/jx/total.svg)](https://github.com/jenkins-x/jx/releases)
 [![GoReport](https://goreportcard.com/badge/github.com/jenkins-x/jx)](https://goreportcard.com/report/github.com/jenkins-x/jx)
@@ -31,12 +36,6 @@ Then [what to do next when you have Jenkins X installed](https://jenkins-x.io/do
 We value respect and inclusiveness and follow the [CDF Code of Conduct](https://github.com/cdfoundation/toc/blob/master/CODE_OF_CONDUCT.md) in all interactions.
 
 We’d love to talk with you about Jenkins X and are happy to help if you have any questions.
-
-Talk to us on our slack channels, which are part of the Kubernetes slack. Join Kubernetes slack [here](https://slack.k8s.io/) and find us on our channels:
-
-* [#jenkins-x-user](https://app.slack.com/client/T09NY5SBT/C9MBGQJRH) for users of Jenkins X
-
-* [#jenkins-x-dev](https://app.slack.com/client/T09NY5SBT/C9LTHT2BB) for developers of Jenkins X
 
 Find out more about our bi-weekly office hours, where we discuss all things Jenkins X, and other events [here](https://jenkins-x.io/community/).
 

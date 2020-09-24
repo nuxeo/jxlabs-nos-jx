@@ -1,7 +1,7 @@
 module github.com/jenkins-x/jx/v2
 
 require (
-	code.gitea.io/sdk/gitea v0.12.0
+	code.gitea.io/sdk/gitea v0.13.0
 	github.com/Azure/draft v0.15.0
 	github.com/Comcast/kuberhealthy v1.0.2
 	github.com/IBM-Cloud/bluemix-go v0.0.0-20181008063305-d718d474c7c2
@@ -63,7 +63,7 @@ require (
 	github.com/jenkins-x/golang-jenkins v0.0.0-20180919102630-65b83ad42314
 	github.com/jenkins-x/jx-api v0.0.13
 	github.com/jenkins-x/jx-logging v0.0.10
-	github.com/jenkins-x/lighthouse v0.0.707
+	github.com/jenkins-x/lighthouse v0.0.783
 	github.com/jetstack/cert-manager v0.9.1
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
@@ -151,6 +151,10 @@ replace github.com/banzaicloud/bank-vaults/pkg/sdk => github.com/banzaicloud/ban
 
 replace k8s.io/test-infra => github.com/jenkins-x/test-infra v0.0.0-20200611142252-211a92405c22
 
-replace gomodules.xyz/jsonpatch/v2 => gomodules.xyz/jsonpatch/v2 v2.0.1
+// gomodules.xyz breaks in Athens proxying
+replace gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.0.1
+
+// vbom.ml doesn't actually exist any more
+replace vbom.ml/util => github.com/fvbommel/util v0.0.0-20180919145318-efcd4e0f9787
 
 go 1.13
