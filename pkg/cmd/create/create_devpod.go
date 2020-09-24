@@ -83,26 +83,27 @@ type CreateDevPodOptions struct {
 	options.CreateOptions
 	opts.CommonDevPodOptions
 
-	Label           string
-	Suffix          string
-	WorkingDir      string
-	RequestCpu      string
-	RequestMemory   string
-	Dir             string
-	Reuse           bool
-	Sync            bool
-	Ports           []int
-	AutoExpose      bool
-	Persist         bool
-	ImportURL       string
-	Import          bool
-	TempDir         bool
-	Theia           bool
-	ShellCmd        string
-	DockerRegistry  string
-	TillerNamespace string
-	ServiceAccount  string
-	PullSecrets     string
+	Label              string
+	Suffix             string
+	WorkingDir         string
+	RequestCpu         string
+	RequestMemory      string
+	Dir                string
+	Reuse              bool
+	Sync               bool
+	Ports              []int
+	AutoExpose         bool
+	Persist            bool
+	WorkspaceClaimName string
+	ImportURL          string
+	Import             bool
+	TempDir            bool
+	Theia              bool
+	ShellCmd           string
+	DockerRegistry     string
+	TillerNamespace    string
+	ServiceAccount     string
+	PullSecrets        string
 
 	GitCredentials credentials.StepGitCredentialsOptions
 
@@ -212,6 +213,7 @@ func NewCmdCreateDevPod(commonOpts *opts.CommonOptions) *cobra.Command {
 	cmd.Flags().IntSliceVarP(&options.Ports, "ports", "p", []int{}, "Container ports exposed by the DevPod")
 	cmd.Flags().BoolVarP(&options.AutoExpose, "auto-expose", "", false, "Automatically expose useful ports via ingresses such as the ide port, debug port, as well as any ports specified using --ports")
 	cmd.Flags().BoolVarP(&options.Persist, "persist", "", false, "Persist changes made to the DevPod. Cannot be used with --sync")
+	cmd.Flags().StringVarP(&options.WorkspaceClaimName, "workspace-claim-name", "", "", "Workspace claim name.")
 	cmd.Flags().StringVarP(&options.ImportURL, "import-url", "u", "", "Clone a Git repository into the DevPod. Cannot be used with --sync")
 	cmd.Flags().BoolVarP(&options.Import, "import", "", true, "Detect if there is a Git repository in the current directory and attempt to clone it into the DevPod. Ignored if used with --sync")
 	cmd.Flags().BoolVarP(&options.TempDir, "temp-dir", "", false, "If enabled and --import-url is supplied then create a temporary directory to clone the source to detect what kind of DevPod to create")
@@ -411,6 +413,10 @@ func (o *CreateDevPodOptions) Run() error {
 		name = uniquePodName(names, name)
 		o.Results.PodName = name
 
+		if o.WorkspaceClaimName == "" {
+			o.WorkspaceClaimName = fmt.Sprintf("%s-pvc", name)
+		}
+
 		pod.Name = name
 		pod.Labels[kube.LabelPodTemplate] = label
 		pod.Labels[kube.LabelDevPodName] = name
@@ -427,45 +433,59 @@ func (o *CreateDevPodOptions) Run() error {
 		container1.Name = devPodContainerName
 
 		workspaceVolumeName := "workspace-volume"
-		// lets remove the default workspace volume as we don't need it
-		for i, v := range pod.Spec.Volumes {
-			if v.Name == workspaceVolumeName {
-				pod.Spec.Volumes = append(pod.Spec.Volumes[:i], pod.Spec.Volumes[i+1:]...)
-				break
-			}
-		}
-		for ci, c := range pod.Spec.Containers {
-			for i, v := range c.VolumeMounts {
-				if v.Name == workspaceVolumeName {
-					pod.Spec.Containers[ci].VolumeMounts = append(c.VolumeMounts[:i], c.VolumeMounts[i+1:]...)
-					break
-				}
-			}
-		}
-
-		// Trying to reuse workspace-volume as a name seems to prevent us modifying the volumes!
-		workspaceVolumeName = "ws-volume"
 		var workspaceVolume corev1.Volume
-		workspaceClaimName := fmt.Sprintf("%s-pvc", pod.Name)
 		workspaceVolumeMount := corev1.VolumeMount{
 			Name:      workspaceVolumeName,
-			MountPath: "/workspace",
+			MountPath: workingDir,
 		}
 		if o.Persist {
 			workspaceVolume = corev1.Volume{
 				Name: workspaceVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: workspaceClaimName,
+						ClaimName: o.WorkspaceClaimName,
 					},
 				},
 			}
-		} else {
-			workspaceVolume = corev1.Volume{
-				Name: workspaceVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
+			// lets replace the default workspace volume
+			for i, v := range pod.Spec.Volumes {
+				if v.Name == workspaceVolumeName {
+					pod.Spec.Volumes[i] = workspaceVolume
+					break
+				}
+			}
+			storageRequest, _ := resource.ParseQuantity("2Gi")
+			pvc := corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: o.WorkspaceClaimName,
+					OwnerReferences: []metav1.OwnerReference{
+						kube.PodOwnerRef(pod),
+					},
 				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{
+						corev1.ReadWriteOnce,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							"storage": storageRequest,
+						},
+					},
+				},
+			}
+			_, err = client.CoreV1().PersistentVolumeClaims(curNs).Get(o.WorkspaceClaimName, metav1.GetOptions{})
+			if err != nil {
+				_, err = client.CoreV1().PersistentVolumeClaims(curNs).Create(&pvc)
+				if err != nil {
+					return errors.Wrapf(err, "creating the persistent volume claim %q in namespace %q", pvc.Name, curNs)
+				}
+			}
+		} else {
+			for i, v := range pod.Spec.Volumes {
+				if v.Name == workspaceVolumeName {
+					workspaceVolume = pod.Spec.Volumes[i]
+					break
+				}
 			}
 		}
 
@@ -493,8 +513,8 @@ func (o *CreateDevPodOptions) Run() error {
 		}
 
 		if !o.Sync {
-			pod.Spec.Volumes = append(pod.Spec.Volumes, workspaceVolume)
-			container1.VolumeMounts = append(container1.VolumeMounts, workspaceVolumeMount)
+			/* 			pod.Spec.Volumes = append(pod.Spec.Volumes, workspaceVolume)
+			   			container1.VolumeMounts = append(container1.VolumeMounts, workspaceVolumeMount) */
 
 			cpuLimit, _ := resource.ParseQuantity("400m")
 			cpuRequest, _ := resource.ParseQuantity("200m")
@@ -750,34 +770,6 @@ func (o *CreateDevPodOptions) Run() error {
 		pod, err = client.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return errors.Wrapf(err, "getting the POD %q", name)
-		}
-
-		// Create PVC if needed
-		if o.Persist {
-			storageRequest, _ := resource.ParseQuantity("2Gi")
-			workspaceClaimName := fmt.Sprintf("%s-pvc", pod.Name)
-			pvc := corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: workspaceClaimName,
-					OwnerReferences: []metav1.OwnerReference{
-						kube.PodOwnerRef(pod),
-					},
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						corev1.ReadWriteOnce,
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							"storage": storageRequest,
-						},
-					},
-				},
-			}
-			_, err = client.CoreV1().PersistentVolumeClaims(curNs).Create(&pvc)
-			if err != nil {
-				return errors.Wrapf(err, "creating the persistent volume claim %q in namespace %q", pvc.Name, curNs)
-			}
 		}
 
 		// Create services
