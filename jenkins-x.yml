@@ -2,6 +2,12 @@ buildPack: none
 pipelineConfig:
   pipelines:
     release:
+      setVersion:
+        steps:
+          - name: git-unshallow
+            sh: 'git fetch --tags --unshallow origin \$BRANCH && git checkout \$BRANCH'
+          - name: create-version-file
+            sh: jx step next-version --version=\$(make version) --tag
       pipeline:
         agent:
           image: gcr.io/kaniko-project/executor:v0.22.0
