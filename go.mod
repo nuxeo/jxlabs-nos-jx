@@ -93,6 +93,7 @@ require (
 	github.com/spf13/viper v1.6.2
 	github.com/stoewer/go-strcase v1.2.0
 	github.com/stretchr/testify v1.6.1
+	github.com/subchen/go-xmldom v1.1.2
 	github.com/tektoncd/pipeline v0.14.2
 	github.com/trivago/tgo v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect

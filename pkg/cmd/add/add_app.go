@@ -123,16 +123,12 @@ func (o *AddAppOptions) addFlags(cmd *cobra.Command, defaultNamespace string) {
 
 // Run implements this command
 func (o *AddAppOptions) Run() error {
-	o.GitOps, o.DevEnv = o.GetDevEnv()
-	if o.DevEnv == nil {
-		return helper.ErrDevEnvNotFound
+	ec, err := o.EnvironmentContext(".", false)
+	if err != nil {
+		return err
 	}
-	if o.Repo == "" {
-		o.Repo = o.DevEnv.Spec.TeamSettings.AppsRepository
-	}
-	if o.Repo == "" {
-		o.Repo = kube.DefaultChartMuseumURL
-	}
+	o.GitOps = ec.GitOps
+	o.DevEnv = ec.DevEnv
 	jxClient, ns, err := o.JXClientAndDevNamespace()
 	if err != nil {
 		return errors.Wrapf(err, "getting jx client")
