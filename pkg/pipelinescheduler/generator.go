@@ -71,11 +71,21 @@ func GenerateProw(gitOps bool, autoApplyConfigUpdater bool, jxClient versioned.I
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "building scheduler")
 		}
-		leaves = append(leaves, &SchedulerLeaf{
+		leaf := &SchedulerLeaf{
 			Repo:          sourceRepo.Spec.Repo,
 			Org:           sourceRepo.Spec.Org,
 			SchedulerSpec: merged,
-		})
+		}
+		leaves = append(leaves, leaf)
+		{
+			cfg, _, err := BuildProwConfig(leaves)
+			cnfBytes, err := yaml.Marshal(cfg)
+
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "bad yaml config")
+			}
+			fmt.Printf("===== %s =====\n%s", sourceRepo.Name, cnfBytes)
+		}
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "building prow config")
 		}

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"fmt"
 
+	"github.com/ghodss/yaml"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/helper"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts"
 	"github.com/jenkins-x/jx/v2/pkg/cmd/opts/step"
@@ -17,6 +18,7 @@ type StepSchedulerConfigApplyOptions struct {
 	step.StepOptions
 	Agent         string
 	ApplyDirectly bool
+	DryRun        bool
 
 	// Used for testing
 	CloneDir string
@@ -56,6 +58,7 @@ func NewCmdStepSchedulerConfigApply(commonOpts *opts.CommonOptions) *cobra.Comma
 	}
 	cmd.Flags().StringVarP(&options.Agent, "agent", "", "prow", "The scheduler agent to use e.g. Prow")
 	cmd.Flags().BoolVarP(&options.ApplyDirectly, "direct", "", false, "Skip generating a PR and apply the pipeline config directly to the cluster when using gitops mode.")
+	cmd.Flags().BoolVarP(&options.DryRun, "dry-run", "", true, "Dry run, print config")
 	return cmd
 }
 
@@ -86,8 +89,13 @@ func (o *StepSchedulerConfigApplyOptions) Run() error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
-		if gitOps && !o.ApplyDirectly {
+		if o.DryRun {
+			cnfBytes, err := yaml.Marshal(cfg)
+			if err != nil {
+				return errors.Wrapf(err, "bad yaml config")
+			}
+			fmt.Printf("%s", cnfBytes)
+		} else if gitOps && !o.ApplyDirectly {
 			opts := pipelinescheduler.GitOpsOptions{
 				Verbose: o.Verbose,
 				DevEnv:  devEnv,
