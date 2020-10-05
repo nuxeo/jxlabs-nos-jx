@@ -36,6 +36,16 @@ pipelineConfig:
                 value: "true"
               - name: GOOGLE_APPLICATION_CREDENTIALS
                 value: /secrets/kaniko/kaniko-secret.json
+              - name: DOCKER_REGISTRY
+                valueFrom:
+                  configMapKeyRef:
+                    key: docker.registry
+                    name: jenkins-x-docker-registry
+              - name: DOCKER_REGISTRY_ORG
+                valueFrom:
+                  configMapKeyRef:
+                    key: docker.org
+                    name: jenkins-x-docker-registry
               - name: CHARTMUSEUM_USER
                 valueFrom:
                   secretKeyRef:
@@ -87,11 +97,12 @@ pipelineConfig:
               - name: build-and-push-image
                 image: gcr.io/kaniko-project/executor:v0.22.0
                 command: /kaniko/executor
-                sh: /kaniko/executor --dockerfile=/workspace/source/Dockerfile
-                  --context=/workspace/source
-                  --cache-dir=/workspace --cache=true
-                  --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:$VERSION
-                  --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:latest
+                args: 
+                  - --dockerfile=/workspace/source/Dockerfile
+                  - --context=/workspace/source
+                  - -cache-dir=/workspace --cache=true
+                  - -destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:$VERSION
+                  - -destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:latest
               - name: release-charts
                 image: gcr.io/jenkinsxio/builder-go
                 command: make
