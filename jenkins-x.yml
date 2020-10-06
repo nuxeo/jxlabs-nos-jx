@@ -3,17 +3,21 @@ pipelineConfig:
   pipelines:
     release:
       setVersion:
+        replace: true
         steps:
           - name: git-unshallow
-            sh: 'git rev-parse --is-shallow-repository && git fetch --unshallow'
+            sh: 'git fetch --quiet --unshallow'
           - name: git-fetch-tags
-            sh: 'git fetch --tags origin $BRANCH'
+            sh: 'git fetch --quiet --tags'
+          - name: git-set-upstream
+            sh: git branch --set-upstream-to=origin/$BRANCH_NAME $BRANCH_NAME
           - name: git-checkout-branch
-            sh: 'git checkout $BRANCH'
-          - name: make-setup
-            sh: 'make noop'
+            sh: 'git checkout $BRANCH_NAME'
           - name: create-version-file
-            sh: jx step next-version --version=\$(make version) --tag
+            sh: jx step next-version --version=\$(make version) 
+          - name: tag-version
+            sh: jx step tag --charts-value-repository=$DOCKER_REGISTRY/$DOCKER_REGISTRY_HOST/jx
+              --version=\$(cat VERSION)
       pipeline:
         agent:
           image: gcr.io/kaniko-project/executor:v0.22.0
