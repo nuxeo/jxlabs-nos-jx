@@ -1,6 +1,6 @@
 image:
-  repository: build-jx-prod/jxlabs-nos-master/jx
-  tag: 2.1.151
+  repository: //jx
+  tag: 2.1.151-2-cbadfd2c0-master
   pullPolicy: IfNotPresent
 
 replicaCount: 1
