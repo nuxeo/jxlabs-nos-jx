@@ -3,6 +3,7 @@
 *.dll
 *.so
 *.dylib
+.tmp
 
 # Test binary, build with `go test -c`
 *.test
@@ -48,6 +49,10 @@ vendor/**
 
 # if you run `jx install --gitops` locally
 jenkins-x-dev-environment
+
+# if you run effective pipeline and create tasks
+jenkins-x-effective.yml
+out
 
 # generated apidocs
 docs/apidocs/build

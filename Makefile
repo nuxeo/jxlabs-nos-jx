@@ -1,6 +1,13 @@
 # Make does not offer a recursive wildcard function, so here's one:
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
+noop: ; @:
+
+include make.d/version.mk
+
+$(tmp-dir):
+	@mkdir $(tmp-dir)
+
 SHELL := /bin/bash
 NAME := jx
 BUILD_TARGET = build
@@ -31,7 +38,7 @@ GOTEST := GO111MODULE=on gotestsum --junitfile $(REPORTS_DIR)/integration.junit.
 endif
 
 # set dev version unless VERSION is explicitly set via environment
-VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-jxlabs-nos+$(REV)" | sed 's/^v//')
+VERSION ?= $(version)
 
 # Build flags for setting build-specific configuration at build time - defaults to empty
 BUILD_TIME_CONFIG_FLAGS ?= ""
