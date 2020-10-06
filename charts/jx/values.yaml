@@ -1,6 +1,6 @@
 image:
-  repository: build-jx-prod/jxlabs-nos-master/jx
-  tag: 2.1.151
+  repository: gcr.io/build-jx-prod/jxlabs-nos-master/jxlabs-nos-jx
+  tag: 2.1.151-4-d52b59fab-master
   pullPolicy: IfNotPresent
 
 replicaCount: 1
