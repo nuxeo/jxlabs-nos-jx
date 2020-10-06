@@ -5,7 +5,13 @@ pipelineConfig:
       setVersion:
         steps:
           - name: git-unshallow
-            sh: 'git fetch --tags --unshallow origin \$BRANCH && git checkout \$BRANCH'
+            sh: 'git rev-parse --is-shallow-repository && git fetch --unshallow'
+          - name: git-fetch-tags
+            sh: 'git fetch --tags origin $BRANCH'
+          - name: git-checkout-branch
+            sh: 'git checkout $BRANCH'
+          - name: make-setup
+            sh: 'make noop'
           - name: create-version-file
             sh: jx step next-version --version=\$(make version) --tag
       pipeline:
@@ -90,15 +96,15 @@ pipelineConfig:
                 args: 
                   - --dockerfile=/workspace/source/Dockerfile
                   - --context=/workspace/source
-                  - -cache-dir=/workspace --cache=true
-                  - -destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:$VERSION
-                  - -destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:latest
+                  - --cache-dir=/workspace --cache=true
+                  - --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:$VERSION
+                  - --destination=$DOCKER_REGISTRY/$DOCKER_REGISTRY_ORG/$APP_NAME:latest
               - name: release-charts
                 image: gcr.io/jenkinsxio/builder-go
                 command: make
                 args:
-                - "release"
-                - --directory=/workspace/source/charts/jx
+                  - "release"
+                  - --directory=/workspace/source/charts/jx
 
               # - name: update-builders
               #   image: gcr.io/jenkinsxio/builder-go
